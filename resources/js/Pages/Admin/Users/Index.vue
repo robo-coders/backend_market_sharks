@@ -192,7 +192,15 @@ const destroyUser = (id) => {
                 </ul>
               </td>
 
-              <td>{{ user.subscription?.plan ?? '-' }}</td>
+              <td>
+                <span v-if="user.status === 'active'">
+                  {{ user.subscription?.plan ?? '-' }}
+                </span>
+
+                <span v-else>
+                  {{ user.paymentRequest?.plan ?? '-' }}
+                </span>
+              </td>
 
               <td>
                 <span v-if="user.subscription_status === 'pending'" class="badge bg-label-secondary">Pending</span>
@@ -202,7 +210,12 @@ const destroyUser = (id) => {
                 <span v-else class="badge bg-label-success">Active</span>
               </td>
 
-              <td>{{ formatDate(user.subscription?.expires_at) }}</td>
+              <td>
+                <span v-if="user.status === 'active'">
+                  {{ formatDate(user.subscription?.expires_at) }}
+                </span>
+                <span v-else>—</span>
+              </td>
 
               <td>
                 <div class="d-flex align-items-center gap-2">

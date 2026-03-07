@@ -7,17 +7,13 @@ const props = defineProps({
   user: { type: Object, required: true },
 })
 
-/**
- * Aliases
- */
-const u = computed(() => props.user)
-const sub = computed(() => props.user.subscription)
+const { user } = props
 
 /**
  * Direct flags
  */
-const isAnon = computed(() => u.value.is_anonymous)
-const status = computed(() => u.value.subscription_status)
+const isAnon = computed(() => user.is_anonymous)
+const status = computed(() => user.status)
 
 /**
  * Presentation helpers
@@ -26,43 +22,54 @@ const statusLabel = computed(() => status.value?.toUpperCase() ?? 'NONE')
 
 const statusBadgeClass = computed(() => {
   if (status.value === 'active') return 'bg-label-success'
-  if (status.value === 'pending' || status.value === 'expiring') return 'bg-label-warning'
-  if (status.value === 'expired' || status.value === 'blocked') return 'bg-label-danger'
+  if (status.value === 'pending') return 'bg-label-warning'
+  if (status.value === 'blocked' || status.value === 'rejected') return 'bg-label-danger'
   return 'bg-label-secondary'
 })
 
 const showVerified = computed(() => status.value === 'active')
-const showRenewsSoon = computed(() => status.value === 'expiring')
 
 /**
- * Subscription helpers
+ * Plan (safe version)
  */
 const planLabel = computed(() => {
-  if (!sub.value) return 'Free'
-  return String(sub.value.plan)
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-})
+  const plan =
+    status.value === 'active'
+      ? user.subscription?.plan
+      : user.payment_request?.plan
 
-const showProBadge = computed(() => {
-  if (!sub.value) return false
-  const plan = String(sub.value.plan).toLowerCase()
-  return !['basic', 'free'].includes(plan)
+  if (!plan) return '—'
+
+  return plan.charAt(0).toUpperCase() + plan.slice(1)
 })
 
 /**
  * Dates
  */
-const formatDate = (value) =>
-  value ? new Date(value).toLocaleDateString() : '—'
+const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : '—')
 
-const joinedDate = computed(() => formatDate(u.value.created_at))
-const expires_at = computed(() => formatDate(sub.value?.expires_at))
+const joinedDate = computed(() => formatDate(user.created_at))
+
+const expires_at = computed(() => {
+  if (status.value !== 'active') return '—'
+  return formatDate(user.subscription?.expires_at)
+})
+
+const showRenewsSoon = computed(() => {
+  if (status.value !== 'active') return false
+  if (!user.subscription?.expires_at) return false
+
+  const today = new Date()
+  const expiry = new Date(user.subscription.expires_at)
+  const diffDays = (expiry - today) / (1000 * 60 * 60 * 24)
+
+  return diffDays <= 30 && diffDays > 0
+})
 
 /**
  * WhatsApp
  */
-const whatsappLabel = computed(() => u.value.whatsapp_number)
+const whatsappLabel = computed(() => user.whatsapp_number)
 </script>
 
 <template>
@@ -78,6 +85,7 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
             <div class="ms-banner__content">
               <div class="ms-badges">
                 <span v-if="isAnon" class="badge bg-label-secondary">Anonymous</span>
+
                 <span
                   class="badge px-3 py-1 fw-semibold"
                   :class="{
@@ -91,9 +99,9 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
               </div>
 
               <div class="ms-title">
-                <h4 class="mb-1 text-white">{{ u.display_name }}</h4>
+                <h4 class="mb-1 text-white">{{ user.display_name }}</h4>
                 <div class="text-white-50 small d-flex flex-wrap gap-3">
-                  <span><i class="bx bx-envelope me-1"></i> {{ u.email }}</span>
+                  <span><i class="bx bx-envelope me-1"></i> {{ user.email }}</span>
                   <span><i class="bx bx-calendar me-1"></i> Joined: {{ joinedDate }}</span>
                   <span><i class="bx bx-phone me-1"></i> WhatsApp: {{ whatsappLabel }}</span>
                   <span><i class="bx bx-map me-1"></i> Region: UAE</span>
@@ -110,19 +118,20 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
               </div>
 
               <div class="flex-grow-1 min-w-0">
-                <h5 class="mb-0">{{ u.display_name }}</h5>
+                <h5 class="mb-0">{{ user.display_name }}</h5>
                 <div class="text-muted small">
                   Trading Signals • Smart Trading • Risk-managed entries
                 </div>
               </div>
 
+              <!-- Buttons -->
               <div class="d-flex gap-2 ms-auto">
                 <button class="btn btn-label-primary" disabled>
                   <i class="bx bx-message-square-dots me-1"></i> Message
                 </button>
 
                 <button
-                  v-if="status === 'pending'"
+                  v-if="status === 'pending' && user.payment_request"
                   class="btn btn-primary"
                 >
                   <i class="bx bx-check me-1"></i> Approve
@@ -133,6 +142,13 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
                   class="btn btn-primary"
                 >
                   <i class="bx bx-shield-quarter me-1"></i> Block
+                </button>
+
+                <button
+                  v-else-if="status === 'blocked'"
+                  class="btn btn-primary"
+                >
+                  <i class="bx bx-refresh me-1"></i> Unblock
                 </button>
 
                 <button v-else class="btn btn-primary" disabled>
@@ -162,12 +178,12 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
                   <div class="ms-stat__label">Plan</div>
                   <div class="ms-stat__value">
                     {{ planLabel }}
-                    <span v-if="sub" class="badge bg-label-primary ms-2">Paid</span>
+                    <span v-if="user.subscription" class="badge bg-label-primary ms-2">Paid</span>
                   </div>
                 </div>
               </div>
 
-              <div class="ms-stat">
+              <div class="ms-stat" v-if="user.subscription">
                 <div class="ms-stat__icon"><i class="bx bx-time-five"></i></div>
                 <div>
                   <div class="ms-stat__label">Expires</div>
@@ -181,10 +197,9 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
           </div>
         </div>
 
-        <!-- Content -->
+        <!-- Content unchanged -->
         <div class="row">
 
-          <!-- About -->
           <div class="col-lg-4 d-flex">
             <div class="card mb-4 h-100 w-100">
               <div class="card-header">
@@ -192,9 +207,9 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
               </div>
               <div class="card-body">
                 <ul class="list-unstyled mb-0">
-                  <li class="mb-3">Full Name: <strong>{{ u.display_name }}</strong></li>
+                  <li class="mb-3">Full Name: <strong>{{ user.display_name }}</strong></li>
                   <li class="mb-3">Status: <strong>{{ statusLabel }}</strong></li>
-                  <li class="mb-3">Role: <strong>{{ u.role }}</strong></li>
+                  <li class="mb-3">Role: <strong>{{ user.role }}</strong></li>
                   <li class="mb-3">Plan: <strong>{{ planLabel }}</strong></li>
                   <li class="mb-3">WhatsApp: <strong>{{ whatsappLabel }}</strong></li>
                   <li>Expires: <strong>{{ expires_at }}</strong></li>
@@ -203,7 +218,6 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
             </div>
           </div>
 
-          <!-- Recent Activity -->
           <div class="col-lg-8 d-flex">
             <div class="card mb-4 h-100 w-100">
               <div class="card-header d-flex justify-content-between">
@@ -212,14 +226,7 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
                   <i class="bx bx-filter-alt"></i>
                 </button>
               </div>
-              <!-- <div class="card-body">
-                <div class="alert alert-info mb-0">
-                  <strong>Coming in Version 2</strong>
-                  <div class="small">
-                    Activity feed will show signals history, admin actions, and risk alerts.
-                  </div>
-                </div>
-              </div> -->
+
               <div class="card-body d-flex align-items-center">
                 <div class="w-100 p-3 rounded bg-label-info">
                   <div class="d-flex align-items-start gap-2">
@@ -233,6 +240,7 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -305,7 +313,7 @@ const whatsappLabel = computed(() => u.value.whatsapp_number)
   object-fit: cover;
 }
 
-/* ✅ Stats row */
+/* Stats row */
 .ms-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

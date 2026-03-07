@@ -75,7 +75,7 @@ class User extends Authenticatable
     }
 
     public function getSubscriptionStatusAttribute(): string
-{
+    {
         if ($this->status === 'pending') return 'pending';
         if ($this->status === 'blocked') return 'blocked';
 
@@ -88,7 +88,12 @@ class User extends Authenticatable
         if (now()->diffInDays($expires_at, false) <= 7) return 'expiring';
 
         return 'active';
-}
+    }
+
+    public function paymentRequest()
+    {
+        return $this->hasOne(\App\Models\PaymentRequest::class)->latestOfMany();
+    }
 
 
 }
