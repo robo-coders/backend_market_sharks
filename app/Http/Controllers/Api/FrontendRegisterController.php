@@ -40,7 +40,7 @@ class FrontendRegisterController extends Controller
         return response()->json([
             'message' => 'Registration successful.',
             'user_id' => $user->id,
-            'token'   => $user->createToken('spa-token')->plainTextToken, // ✏️ ADDED
+            'token'   => $user->createToken('spa-token')->plainTextToken,
         ]);
     }
 }

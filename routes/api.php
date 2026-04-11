@@ -3,7 +3,8 @@
 use App\Http\Controllers\Api\MeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PaymentRequestController;
-use App\Http\Controllers\Api\FrontendRegisterController;
+use App\Http\Controllers\Api\Frontend\AuthController;
+
 
 
 Route::get('/test', function () {
@@ -15,7 +16,8 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::post('/register', [FrontendRegisterController::class, 'store']);
+Route::post('/register', [AuthController::class, 'store']);
+Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/payment-requests', [PaymentRequestController::class, 'store']);
 

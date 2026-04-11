@@ -18,13 +18,13 @@ class PaymentRequestController extends Controller
         $data = $request->validate([
             'plan' => 'required|in:basic,premium,enterprise',
             'payment_method' => 'required|in:bank,btc,jazzcash,easypaisa',
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'nickname' => 'nullable|string|max:100',
+            'first_name' => 'required_if:is_anonymous,false|nullable|string|max:100',
+            'last_name'  => 'required_if:is_anonymous,false|nullable|string|max:100',
+            'nickname'   => 'required_if:is_anonymous,true|nullable|string|max:100',
             'is_anonymous' => 'boolean',
             'email' => 'required|email',
             'whatsapp_number' => 'required|string|max:30',
-            'proof_path' => 'nullable|required|image|max:2048',
+            'proof' => 'required|image|max:2048',
         ]);
 
         $name = ($data['is_anonymous'] ?? false)
@@ -44,8 +44,6 @@ class PaymentRequestController extends Controller
         );
 
         $user->assignRole('user');
-
-        // $proofPath = $request->file('proof')->store('payment-proofs', 'public');
 
         $proofPath = $request->hasFile('proof') 
             ? $request->file('proof')->store('payment-proofs', 'public')
