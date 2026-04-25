@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Api\MeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -35,24 +37,33 @@ Route::middleware(['auth', 'verified', 'role:super_admin|admin'])
     ->prefix('admin')
     ->group(function () {
 
-        Route::get('/dashboard', function () {
-            return Inertia::render('Admin/Dashboard');
-        })->name('admin.dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
         Route::get('/users', [UserController::class, 'index'])
             ->name('admin.users.index');
 
         Route::patch('/users/{user}/approve', [UserController::class, 'approve'])
             ->name('admin.users.approve');
+        Route::patch('users/{user}/reject', [UserController::class, 'reject'])->name('admin.users.reject');
+        Route::patch('/users/{user}/block', [UserController::class, 'block'])
+            ->name('admin.users.block');
+
+        Route::patch('/users/{user}/unblock', [UserController::class, 'unblock'])
+            ->name('admin.users.unblock');
 
         Route::get('/users/{user}', [UserController::class, 'show'])
             ->name('admin.users.show');
+            
             
         Route::delete('/users/{user}', [UserController::class, 'destroy'])
             ->name('admin.users.destroy');
 
 
     });
+
+//Settings
+    Route::get('settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
+    Route::post('settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
 /*
 |--------------------------------------------------------------------------
@@ -67,13 +78,6 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
-
-/*
-|--------------------------------------------------------------------------
-| Public site
-|--------------------------------------------------------------------------
-*/
-
 
 /*
 |--------------------------------------------------------------------------

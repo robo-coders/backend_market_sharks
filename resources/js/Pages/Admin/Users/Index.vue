@@ -4,13 +4,11 @@ import { Head, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import Swal from 'sweetalert2'
 
-/* props */
 const props = defineProps({
   users: Array,
-  counts: Object, // { all, pending, payment_review, active, expiring, expired, blocked, rejected }
+  counts: Object,
 })
 
-/* helpers */
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString() : '—'
 
@@ -33,7 +31,6 @@ const displayStatus = (user) => {
   return 'pending'
 }
 
-/* filters */
 const activeFilter = ref('all')
 const setFilter = (key) => (activeFilter.value = key)
 
@@ -42,7 +39,6 @@ const filteredUsers = computed(() => {
   return props.users.filter((u) => displayStatus(u) === activeFilter.value)
 })
 
-/* actions */
 const approveUser = (user) => {
   router.patch(route('admin.users.approve', user.id))
 }
@@ -57,7 +53,6 @@ const destroyUser = (id) => {
     cancelButtonText: 'Cancel',
   }).then((result) => {
     if (result.isConfirmed === false) return
-
     router.delete(route('admin.users.destroy', id), {
       onSuccess: () => {
         Swal.fire({
@@ -69,11 +64,7 @@ const destroyUser = (id) => {
         })
       },
       onError: () => {
-        Swal.fire({
-          title: 'Error',
-          text: 'Could not delete user.',
-          icon: 'error',
-        })
+        Swal.fire({ title: 'Error', text: 'Could not delete user.', icon: 'error' })
       },
     })
   })
@@ -92,50 +83,42 @@ const destroyUser = (id) => {
         <ul class="nav nav-pills">
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'all' }" @click="setFilter('all')">
-              All
-              <span class="badge rounded-pill bg-label-secondary ms-2">{{ props.counts.all }}</span>
+              All <span class="badge rounded-pill bg-label-secondary ms-2">{{ props.counts.all }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'pending' }" @click="setFilter('pending')">
-              Pending
-              <span class="badge rounded-pill bg-label-secondary ms-2">{{ props.counts.pending }}</span>
+              Pending <span class="badge rounded-pill bg-label-secondary ms-2">{{ props.counts.pending }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'payment_review' }" @click="setFilter('payment_review')">
-              Payment Review
-              <span class="badge rounded-pill bg-label-info ms-2">{{ props.counts.payment_review }}</span>
+              Payment Review <span class="badge rounded-pill bg-label-info ms-2">{{ props.counts.payment_review }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'active' }" @click="setFilter('active')">
-              Active
-              <span class="badge rounded-pill bg-label-success ms-2">{{ props.counts.active }}</span>
+              Active <span class="badge rounded-pill bg-label-success ms-2">{{ props.counts.active }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'expiring' }" @click="setFilter('expiring')">
-              Expiring Soon
-              <span class="badge rounded-pill bg-label-warning ms-2">{{ props.counts.expiring }}</span>
+              Expiring Soon <span class="badge rounded-pill bg-label-warning ms-2">{{ props.counts.expiring }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'expired' }" @click="setFilter('expired')">
-              Expired
-              <span class="badge rounded-pill bg-label-danger ms-2">{{ props.counts.expired }}</span>
+              Expired <span class="badge rounded-pill bg-label-danger ms-2">{{ props.counts.expired }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'blocked' }" @click="setFilter('blocked')">
-              Blocked
-              <span class="badge rounded-pill bg-label-dark ms-2">{{ props.counts.blocked }}</span>
+              Blocked <span class="badge rounded-pill bg-label-dark ms-2">{{ props.counts.blocked }}</span>
             </button>
           </li>
           <li class="nav-item">
             <button class="nav-link" :class="{ active: activeFilter === 'rejected' }" @click="setFilter('rejected')">
-              Rejected
-              <span class="badge rounded-pill bg-label-danger ms-2">{{ props.counts.rejected }}</span>
+              Rejected <span class="badge rounded-pill bg-label-danger ms-2">{{ props.counts.rejected }}</span>
             </button>
           </li>
         </ul>
@@ -170,6 +153,7 @@ const destroyUser = (id) => {
               :key="user.id"
               :class="{ 'table-danger': displayStatus(user) === 'expired' }"
             >
+              <!-- Name -->
               <td>
                 <div class="d-flex align-items-center gap-2">
                   <strong>{{ user.display_name }}</strong>
@@ -177,8 +161,10 @@ const destroyUser = (id) => {
                 </div>
               </td>
 
+              <!-- Email -->
               <td>{{ user.email }}</td>
 
+              <!-- Picture -->
               <td>
                 <ul class="list-unstyled users-list m-0 avatar-group d-flex align-items-center">
                   <li class="avatar avatar-xs pull-up">
@@ -187,30 +173,42 @@ const destroyUser = (id) => {
                 </ul>
               </td>
 
-              <!-- active → subscription plan | payment_review → awaiting plan | anything else → dash -->
+              <!-- Plan -->
               <td>
-                <span v-if="user.status === 'active'">{{ user.subscription?.plan ?? '-' }}</span>
-                <span v-else-if="user.status === 'payment_review'">{{ user.paymentRequest?.plan ?? '-' }}</span>
-                <span v-else>—</span>
+                <template v-if="user.status === 'active' && user.subscription?.plan">
+                  <span class="fw-semibold text-capitalize">{{ user.subscription.plan }}</span>
+                </template>
+                <template v-else-if="user.status === 'payment_review' && user.payment_request?.plan">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="bg-warning rounded-circle d-inline-block flex-shrink-0" style="width:8px; height:8px;"></span>
+                    <span class="fw-semibold text-capitalize">{{ user.payment_request.plan }}</span>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="text-muted">—</span>
+                </template>
               </td>
 
+              <!-- Status -->
               <td>
-                <span v-if="displayStatus(user) === 'pending'"        class="badge bg-label-secondary">Pending</span>
+                <span v-if="displayStatus(user) === 'pending'"             class="badge bg-label-secondary">Pending</span>
                 <span v-else-if="displayStatus(user) === 'payment_review'" class="badge bg-label-info">Payment Review</span>
-                <span v-else-if="displayStatus(user) === 'blocked'"   class="badge bg-label-dark">Blocked</span>
-                <span v-else-if="displayStatus(user) === 'rejected'"  class="badge bg-label-danger">Rejected</span>
-                <span v-else-if="displayStatus(user) === 'expired'"   class="badge bg-label-danger">Expired</span>
-                <span v-else-if="displayStatus(user) === 'expiring'"  class="badge bg-label-warning">Expiring Soon</span>
+                <span v-else-if="displayStatus(user) === 'blocked'"        class="badge bg-label-dark">Blocked</span>
+                <span v-else-if="displayStatus(user) === 'rejected'"       class="badge bg-label-danger">Rejected</span>
+                <span v-else-if="displayStatus(user) === 'expired'"        class="badge bg-label-danger">Expired</span>
+                <span v-else-if="displayStatus(user) === 'expiring'"       class="badge bg-label-warning">Expiring Soon</span>
                 <span v-else class="badge bg-label-success">Active</span>
               </td>
 
+              <!-- Expires -->
               <td>
                 <span v-if="user.status === 'active' && user.subscription?.expires_at">
                   {{ formatDate(user.subscription.expires_at) }}
                 </span>
-                <span v-else>—</span>
+                <span v-else class="text-muted">—</span>
               </td>
 
+              <!-- Actions -->
               <td>
                 <div class="d-flex align-items-center gap-2">
                   <a :href="route('admin.users.show', user.id)" class="btn btn-sm btn-icon" title="View">
@@ -227,7 +225,6 @@ const destroyUser = (id) => {
                     </button>
 
                     <div class="dropdown-menu dropdown-menu-end">
-                      <!-- Only shown when user has submitted payment and is awaiting review -->
                       <button
                         v-if="user.status === 'payment_review'"
                         class="dropdown-item"

@@ -33,6 +33,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $with = ['subscription', 'paymentRequest'];
+
     protected function casts(): array
     {
         return [
@@ -58,6 +60,7 @@ class User extends Authenticatable
 
     public function paymentRequest()
     {
-        return $this->hasOne(\App\Models\PaymentRequest::class)->latestOfMany();
+        return $this->hasOne(\App\Models\PaymentRequest::class)->latest();
+
     }
 }

@@ -22,28 +22,25 @@ class MeController extends Controller
 
         $plan = null;
         $expiresAt = null;
-        $paymentRequestStatus = null;
 
         if ($user->status === 'active' && $user->subscription) {
             $plan = $user->subscription->plan;
             $expiresAt = optional($user->subscription->expires_at)?->toDateString();
         } else {
-            $paymentRequestStatus = optional($user->paymentRequest)->status;
-            // optional: show intended plan while pending/rejected
             $plan = optional($user->paymentRequest)->plan;
         }
 
         return response()->json([
             'user' => [
-                'id' => $user->id,
-                'name' => $user->display_name,
-                'email' => $user->email,
-                'status' => $user->status,
-                'subscription_status' => $user->subscription_status,
+                'id'                  => $user->id,
+                'name'                => $user->display_name,
+                'email'               => $user->email,
+                'status'              => $user->status,
+                'subscription_status' => optional($user->subscription)->status,
             ],
-            'plan' => $plan,
-            'expires_at' => $expiresAt,
-            'payment_request_status' => $paymentRequestStatus,
+            'plan'                   => $plan,
+            'expires_at'             => $expiresAt,
+            'payment_request_status' => optional($user->paymentRequest)->status,
         ]);
     }
 }

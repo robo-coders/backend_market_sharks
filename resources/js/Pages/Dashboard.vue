@@ -13,6 +13,7 @@ import { Head } from '@inertiajs/vue3';
             >
                 Dashboard
             </h2>
+            <h1>TEST PHASE </h1>
         </template>
 
         <div class="py-12">
