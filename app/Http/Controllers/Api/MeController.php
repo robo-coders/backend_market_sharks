@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Setting;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -41,6 +42,8 @@ class MeController extends Controller
             'plan'                   => $plan,
             'expires_at'             => $expiresAt,
             'payment_request_status' => optional($user->paymentRequest)->status,
+            'whatsapp_link'          => Setting::get('whatsapp_group_link'),
+
         ]);
     }
 }

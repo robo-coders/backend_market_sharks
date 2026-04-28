@@ -50,7 +50,7 @@ class UserController extends Controller
     {
         $user->load(['subscription', 'paymentRequest']);
 
-        return Inertia::render('Admin/Users/Show3', [
+        return Inertia::render('Admin/Users/Show', [
             'user' => $user,
         ]);
     }

@@ -1,7 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -12,28 +12,32 @@ const props = defineProps({
 
 const page = usePage();
 const auth = computed(() => page.props.auth?.user);
-const successMessage = computed(() => page.props.flash?.success);
-
-watch(successMessage, (val) => {
-    if (val) {
-        Swal.fire({
-            icon: 'success',
-            title: 'Saved!',
-            text: val,
-            timer: 2500,
-            showConfirmButton: false,
-            toast: true,
-            position: 'top-end',
-        });
-    }
-});
 
 const form = useForm({
     whatsapp_link: props.whatsappLink ?? '',
 });
 
+const toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    didOpen: (toast) => {
+        toast.onmouseenter = Swal.stopTimer;
+        toast.onmouseleave = Swal.resumeTimer;
+    },
+});
+
 const submit = () => {
-    form.post(route('admin.settings.update'), { preserveScroll: true });
+    form.post(route('admin.settings.update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.fire({ icon: 'success', title: 'WhatsApp link updated!' });
+        },
+        onError: () => {
+            toast.fire({ icon: 'error', title: 'Failed to save link.' });
+        },
+    });
 };
 
 const statsConfig = computed(() => [
@@ -79,9 +83,7 @@ const statsConfig = computed(() => [
         <div class="space-y-6">
 
             <div class="relative overflow-hidden rounded-2xl px-6 py-5 flex items-center justify-between" style="isolation: isolate; z-index: 0;">
-                <!-- Login-inspired gradient background -->
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,70,229,0.45),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.25),transparent_50%),linear-gradient(135deg,#0f172a,#1e1b4b)]"></div>
-                <!-- Subtle grid overlay -->
                 <div class="absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,rgba(148,163,184,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.1)_1px,transparent_1px)] [background-size:32px_32px]"></div>
 
                 <div class="relative">

@@ -1,169 +1,225 @@
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
 
+const page = usePage()
+const user = computed(() => page.props.auth?.user)
+const roleNames = computed(() => page.props.auth?.role_names ?? [])
+const isSuperAdmin = computed(() => roleNames.value.includes('super_admin'))
+
+const sidebarOpen = ref(false)
+const userMenuOpen = ref(false)
+
+const navLinks = computed(() => {
+    const links = [
+        {
+            label: 'Dashboard',
+            href: route('admin.dashboard'),
+            active: route().current('admin.dashboard'),
+            icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+        },
+        {
+            label: 'Users',
+            href: route('admin.users.index'),
+            active: route().current('admin.users.*'),
+            icon: 'M17 20h5v-2a4 4 0 00-5.196-3.796M9 20H4v-2a4 4 0 015.196-3.796M15 7a4 4 0 11-8 0 4 4 0 018 0z',
+        },
+    ]
+
+    if (isSuperAdmin.value) {
+        links.push({
+            label: 'Admins',
+            href: route('admin.admins.index'),
+            active: route().current('admin.admins.*'),
+            icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+        })
+    }
+
+    return links
+})
 </script>
 
 <template>
-  <!-- Layout wrapper -->
-  <div class="layout-wrapper layout-content-navbar">
-    <div class="layout-container">
-      <!-- Menu (Sidebar) -->
-      <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
-        <div class="app-brand demo">
-          <Link :href="route('admin.dashboard')" class="app-brand-link">
-            <span class="app-brand-text demo menu-text fw-bolder ms-2">Market Sharks</span>
-          </Link>
+    <div class="min-h-screen bg-slate-50 flex">
 
-          <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
-            <i class="bx bx-chevron-left bx-sm align-middle"></i>
-          </a>
-        </div>
+        <!-- Sidebar backdrop (mobile) -->
+        <div
+            v-if="sidebarOpen"
+            class="fixed inset-0 z-20 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+            @click="sidebarOpen = false"
+        />
 
-        <div class="menu-inner-shadow"></div>
-
-        <ul class="menu-inner py-1">
-          <li class="menu-item">
-            <Link :href="route('admin.dashboard')" class="menu-link">
-              <i class="menu-icon tf-icons bx bx-home-circle"></i>
-              <div>Dashboard</div>
-            </Link>
-          </li>
-          <!-- Components -->
-          <li class="menu-header small text-uppercase"><span class="menu-header-text">Manage</span></li>
-          <!-- Cards -->
-          <li class="menu-item">
-            <Link :href="route('admin.users.index')" class="menu-link">
-              <i class="menu-icon tf-icons bx bx-collection"></i>
-              <div data-i18n="Basic">Users</div>
-            </Link>
-          </li>
-
-          <li class="menu-item" v-if="$page.props.auth.role_names?.includes('super_admin')">
-              <Link :href="route('admin.admins.index')" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-collection"></i>
-                <div data-i18n="Basic">Admins</div>
-              </Link>
-            </li>
-            
-        </ul>
-      </aside>
-      <!-- / Menu -->
-
-      <!-- Layout page -->
-      <div class="layout-page">
-        <!-- Navbar -->
-        <nav
-          class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme"
-          id="layout-navbar"
+        <!-- Sidebar -->
+        <aside
+            :class="[
+                'fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            ]"
         >
-          <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
-            <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)">
-              <i class="bx bx-menu bx-sm"></i>
-            </a>
-          </div>
-
-          <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-            <div class="navbar-nav align-items-center">
-              <div class="nav-item d-flex align-items-center">
-                <i class="bx bx-search fs-4 lh-0"></i>
-                <input
-                  type="text"
-                  class="form-control border-0 shadow-none"
-                  placeholder="Search..."
-                  aria-label="Search..."
-                />
-              </div>
-            </div>
-        <!-- Right side -->
-        <ul class="navbar-nav flex-row align-items-center ms-auto">
-          <!-- User -->
-          <li class="nav-item navbar-dropdown dropdown-user dropdown">
-            <a
-              class="nav-link dropdown-toggle hide-arrow"
-              href="javascript:void(0);"
-              data-bs-toggle="dropdown"
-            >
-              <div class="avatar avatar-online">
-                <img
-                  src="/admin/assets/img/avatars/1.png"
-                  alt
-                  class="w-px-40 h-auto rounded-circle"
-                />
-              </div>
-            </a>
-
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li>
-                <a class="dropdown-item" href="#">
-                  <div class="d-flex">
-                    <div class="flex-shrink-0 me-3">
-                      <div class="avatar avatar-online">
-                        <img
-                          src="/admin/assets/img/avatars/1.png"
-                          alt
-                          class="w-px-40 h-auto rounded-circle"
-                        />
-                      </div>
-                    </div>
-                    <div class="flex-grow-1">
-                      <span class="fw-semibold d-block">
-                        {{ $page.props.auth.user.name }}
-                      </span>
-                      <small class="text-muted">
-                        {{ $page.props.auth.user.email || 'No email' }}
-                      </small>
-                    </div>
-                  </div>
-                </a>
-              </li>
-
-              <li><div class="dropdown-divider"></div></li>
-
-              <li>
-                <Link
-                  :href="route('logout')"
-                  method="post"
-                  class="dropdown-item"
-                >
-                  <i class="bx bx-power-off me-2"></i>
-                  <span class="align-middle">Log Out</span>
+            <!-- Logo -->
+            <div class="h-16 flex items-center gap-3 px-5 border-b border-slate-100 shrink-0">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                </div>
+                <Link :href="route('admin.dashboard')" class="text-sm font-bold text-slate-900 tracking-tight">
+                    Market Sharks
                 </Link>
-              </li>
-            </ul>
-          </li>
-          <!--/ User -->
-        </ul>
-
-          </div>
-        </nav>
-        <!-- / Navbar -->
-
-        <!-- Content wrapper -->
-        <div class="content-wrapper">
-          <!-- Content -->
-          <div class="container-xxl flex-grow-1 container-p-y">
-            <slot />
-          </div>
-          <!-- / Content -->
-
-          <!-- Footer (optional) -->
-          <footer class="content-footer footer bg-footer-theme">
-            <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
-              <div class="mb-2 mb-md-0">
-                © {{ new Date().getFullYear() }} Market Sharks
-              </div>
+                <button
+                    class="ml-auto lg:hidden text-slate-400 hover:text-slate-600"
+                    @click="sidebarOpen = false"
+                >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
-          </footer>
 
-          <div class="content-backdrop fade"></div>
-        </div>
-        <!-- / Content wrapper -->
-      </div>
-      <!-- / Layout page -->
+            <!-- Nav -->
+            <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-2">Menu</p>
+
+                <Link
+                    v-for="link in navLinks"
+                    :key="link.label"
+                    :href="link.href"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group"
+                    :class="link.active
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
+                    @click="sidebarOpen = false"
+                >
+                    <svg
+                        class="w-4 h-4 shrink-0 transition-colors"
+                        :class="link.active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" :d="link.icon" />
+                    </svg>
+                    {{ link.label }}
+
+                    <span v-if="link.active" class="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                </Link>
+            </nav>
+
+            <!-- Sidebar footer -->
+            <div class="p-3 border-t border-slate-100 shrink-0">
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
+                        {{ user?.name?.charAt(0)?.toUpperCase() ?? 'A' }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-slate-800 truncate">{{ user?.name ?? 'Admin' }}</p>
+                        <p class="text-[10px] text-slate-400 truncate">{{ user?.email ?? '' }}</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <div class="flex-1 flex flex-col min-w-0">
+
+            <!-- Topbar -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-4 sm:px-6 shrink-0 sticky top-0 z-10">
+
+                <!-- Mobile menu toggle -->
+                <button
+                    class="lg:hidden text-slate-500 hover:text-slate-700 transition"
+                    @click="sidebarOpen = true"
+                >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+
+                <!-- Page title (optional breadcrumb area) -->
+                <div class="flex-1" />
+
+                <!-- Right side -->
+                <div class="flex items-center gap-3">
+
+                    <!-- Role badge -->
+                    <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        {{ isSuperAdmin ? 'Super Admin' : 'Admin' }}
+                    </span>
+
+                    <!-- User dropdown -->
+                    <div class="relative">
+                        <button
+                            class="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-50 transition"
+                            @click="userMenuOpen = !userMenuOpen"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                {{ user?.name?.charAt(0)?.toUpperCase() ?? 'A' }}
+                            </div>
+                            <span class="hidden sm:block text-sm font-medium text-slate-700">{{ user?.name?.split(' ')[0] }}</span>
+                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown -->
+                        <div
+                            v-if="userMenuOpen"
+                            class="absolute right-0 mt-1.5 w-52 bg-white rounded-2xl shadow-lg border border-slate-200 py-1.5 z-50"
+                            @click.stop
+                        >
+                            <div class="px-4 py-2.5 border-b border-slate-100">
+                                <p class="text-sm font-semibold text-slate-900 truncate">{{ user?.name }}</p>
+                                <p class="text-xs text-slate-400 truncate mt-0.5">{{ user?.email }}</p>
+                            </div>
+
+                            <div class="pt-1.5 px-1.5">
+                                <Link
+                                    :href="route('logout')"
+                                    method="post"
+                                    class="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-sm text-rose-600 hover:bg-rose-50 transition font-medium"
+                                    @click="userMenuOpen = false"
+                                >
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    Log Out
+                                </Link>
+                            </div>
+                        </div>
+
+                        <!-- Click outside to close -->
+                        <div
+                            v-if="userMenuOpen"
+                            class="fixed inset-0 z-40"
+                            @click="userMenuOpen = false"
+                        />
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page content -->
+            <main class="flex-1 p-4 sm:p-6">
+                <slot />
+            </main>
+
+            <!-- Footer -->
+            <footer class="px-6 py-4 border-t border-slate-100 bg-white">
+    <div class="flex items-center justify-between">
+        <p class="text-xs text-slate-400">
+            © {{ new Date().getFullYear() }} Market Sharks. All rights reserved.
+        </p>
+        <p class="text-xs text-slate-400">
+            Powered and designed by
+            <a
+                href="https://www.robocoders.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="font-medium text-slate-500 hover:text-indigo-600 transition underline underline-offset-2 decoration-slate-300"
+            >
+                Robo Coders
+            </a>
+        </p>
     </div>
-
-    <!-- Overlay -->
-    <div class="layout-overlay layout-menu-toggle"></div>
-  </div>
-  <!-- / Layout wrapper -->
+</footer>
+        </div>
+    </div>
 </template>

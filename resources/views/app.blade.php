@@ -7,7 +7,6 @@
         <link rel="stylesheet" href="{{ asset('admin/assets/vendor/css/core.css') }}" class="template-customizer-core-css" />
         <link rel="stylesheet" href="{{ asset('admin/assets/vendor/fonts/boxicons.css') }}" />
         <link rel="stylesheet" href="{{ asset('admin/assets/vendor/css/theme-default.css') }}" class="template-customizer-theme-css" />
-        <link rel="stylesheet" href="{{ asset('admin/assets/css/demo.css') }}" />
 
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
@@ -19,7 +18,6 @@
         <!-- Scripts -->
         @routes
         <script src="/admin/assets/vendor/js/helpers.js"></script>
-        <script src="/admin/assets/js/config.js"></script>
 
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
         @inertiaHead

@@ -131,7 +131,6 @@ const destroyUser = (id) => {
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th>Picture</th>
               <th>Plan</th>
               <th>Status</th>
               <th>Expires</th>
@@ -163,15 +162,6 @@ const destroyUser = (id) => {
 
               <!-- Email -->
               <td>{{ user.email }}</td>
-
-              <!-- Picture -->
-              <td>
-                <ul class="list-unstyled users-list m-0 avatar-group d-flex align-items-center">
-                  <li class="avatar avatar-xs pull-up">
-                    <img src="/admin/assets/img/avatars/5.png" class="rounded-circle" alt="Avatar" />
-                  </li>
-                </ul>
-              </td>
 
               <!-- Plan -->
               <td>
