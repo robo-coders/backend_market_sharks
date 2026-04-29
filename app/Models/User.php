@@ -20,7 +20,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
         'status',
         'whatsapp_number',
         'is_anonymous',
