@@ -1,0 +1,7 @@
+your-laravel-project/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml   ← this file
+├── app/
+├── composer.json
+├── ...
