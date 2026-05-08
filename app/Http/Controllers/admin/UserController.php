@@ -14,6 +14,8 @@ class UserController extends Controller
 {
     public function index()
     {
+        $isSuperAdmin = auth()->user()->hasRole('super_admin');
+
         $users = User::role('user')
             ->with(['subscription', 'paymentRequest'])
             ->get();
@@ -26,18 +28,27 @@ class UserController extends Controller
             'rejected'       => $users->where('status', 'rejected')->count(),
             'active'         => $users->filter(
                                     fn($u) => $u->status === 'active'
-                                           && !($u->subscription?->isExpired())
-                                           && !($u->subscription?->isExpiringSoon())
+                                        && !$u->subscription?->isExpired()
+                                        && !$u->subscription?->isExpiringSoon()
                                 )->count(),
             'expiring'       => $users->filter(
                                     fn($u) => $u->status === 'active'
-                                           && $u->subscription?->isExpiringSoon()
+                                        && $u->subscription?->isExpiringSoon()
                                 )->count(),
             'expired'        => $users->filter(
                                     fn($u) => $u->status === 'active'
-                                           && $u->subscription?->isExpired()
+                                        && $u->subscription?->isExpired()
                                 )->count(),
         ];
+
+        $users = $users->map(function ($user) use ($isSuperAdmin) {
+            $data = $user->toArray();
+            if (!$isSuperAdmin) {
+                $data['email']    = '—';
+                $data['whatsapp'] = '—';
+            }
+            return $data;
+        });
 
         return Inertia::render('Admin/Users/Index', [
             'users'   => $users,

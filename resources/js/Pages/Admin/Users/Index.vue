@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { usePage } from '@inertiajs/vue3'
 import { Head, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import Swal from 'sweetalert2'
@@ -8,6 +9,10 @@ const props = defineProps({
   users: Array,
   counts: Object,
 })
+
+const isSuperAdmin = computed(() =>
+  usePage().props.auth.role_names?.includes('super_admin')
+)
 
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString() : '—'
@@ -130,7 +135,7 @@ const destroyUser = (id) => {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Email</th>
+              <th v-if="isSuperAdmin">Email</th>
               <th>Plan</th>
               <th>Status</th>
               <th>Expires</th>
@@ -161,7 +166,7 @@ const destroyUser = (id) => {
               </td>
 
               <!-- Email -->
-              <td>{{ user.email }}</td>
+              <td v-if="isSuperAdmin">{{ user.email }}</td>
 
               <!-- Plan -->
               <td>

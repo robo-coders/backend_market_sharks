@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { usePage } from '@inertiajs/vue3'
 import { Head, router } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import Swal from 'sweetalert2'
@@ -7,6 +8,10 @@ import Swal from 'sweetalert2'
 const props = defineProps({
   user: { type: Object, required: true },
 })
+
+const isSuperAdmin = computed(() =>
+  usePage().props.auth.role_names?.includes('super_admin')
+)
 
 const user    = computed(() => props.user)
 const isAnon  = computed(() => user.value.is_anonymous)
@@ -171,9 +176,9 @@ const unblockUser = () => {
             <div>
               <h4 class="ms-hero__name">{{ user.display_name }}</h4>
               <div class="ms-hero__meta">
-                <span><i class="bx bx-envelope"></i> {{ user.email }}</span>
+                <span v-if="isSuperAdmin"><i class="bx bx-envelope"></i> {{ user.email }}</span>
                 <span v-if="joinedDate"><i class="bx bx-calendar"></i> Joined {{ joinedDate }}</span>
-                <span v-if="whatsappLabel"><i class="bx bx-phone"></i> {{ whatsappLabel }}</span>
+                <span v-if="whatsappLabel && isSuperAdmin"><i class="bx bx-phone"></i> {{ whatsappLabel }}</span>
                 <span><i class="bx bx-map"></i> UAE</span>
               </div>
             </div>
@@ -233,7 +238,7 @@ const unblockUser = () => {
                   <span class="ms-info-row__label">Role</span>
                   <span class="badge" :class="roleBadgeClass">{{ roleLabel }}</span>
                 </div>
-                <div class="ms-info-row" v-if="whatsappLabel">
+                <div class="ms-info-row" v-if="whatsappLabel && isSuperAdmin">
                   <span class="ms-info-row__label">WhatsApp</span>
                   <span class="ms-info-row__value">{{ whatsappLabel }}</span>
                 </div>
