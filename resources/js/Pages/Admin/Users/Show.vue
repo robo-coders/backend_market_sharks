@@ -11,7 +11,7 @@ const props = defineProps({
 
 const page = usePage()
 
-// TEMP CHECK: if this comment is visible in production build source, latest build is deployed
+// TEST CHECK
 const isSuperAdmin = computed(() =>
   page.props.auth?.role_names?.includes('super_admin')
 )
