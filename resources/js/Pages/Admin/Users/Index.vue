@@ -10,8 +10,10 @@ const props = defineProps({
   counts: Object,
 })
 
+const page = usePage()
+
 const isSuperAdmin = computed(() =>
-  usePage().props.auth.role_names?.includes('super_admin')
+  page.props.auth?.role_names?.includes('super_admin')
 )
 
 const formatDate = (value) =>
