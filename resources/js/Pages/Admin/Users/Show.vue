@@ -9,8 +9,11 @@ const props = defineProps({
   user: { type: Object, required: true },
 })
 
+const page = usePage()
+
+// TEMP CHECK: if this comment is visible in production build source, latest build is deployed
 const isSuperAdmin = computed(() =>
-  usePage().props.auth.role_names?.includes('super_admin')
+  page.props.auth?.role_names?.includes('super_admin')
 )
 
 const user    = computed(() => props.user)
