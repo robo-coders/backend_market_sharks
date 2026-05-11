@@ -5,7 +5,7 @@ You're all set. We've reviewed your payment and everything looks good. Your Mark
 
 Head over to your dashboard to start exploring your signals.
 
-@component('mail::button', ['url' => config('app.url') . '/app/dashboard'])
+@component('mail::button', ['url' => config('app.frontend_url') . '/app/dashboard'])
 Open Dashboard
 @endcomponent
 

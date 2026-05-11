@@ -90,7 +90,10 @@ class UserController extends Controller
                 [
                     'plan'       => $paymentRequest->plan,
                     'starts_at'  => now(),
-                    'expires_at' => now()->addMonth(),
+                    'expires_at' => now()->addDays(match($paymentRequest->plan) {
+                    'premium' => 90,
+                    default   => 30,
+                }),
                     'status'     => 'active',
                 ]
             );

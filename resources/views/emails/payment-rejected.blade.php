@@ -11,7 +11,7 @@ Thanks for submitting your payment details. Unfortunately we weren't able to ver
 @endif
 If you think something went wrong, feel free to resubmit via your dashboard or reach out to us directly and we'll sort it out.
 
-@component('mail::button', ['url' => config('app.url') . '/app/dashboard'])
+@component('mail::button', ['url' => config('app.frontend_url') . '/app/dashboard'])
 Go to Dashboard
 @endcomponent
 
