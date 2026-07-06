@@ -1,7 +1,7 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
-import NotificationBell from '@/components/NotificationBell.vue'
+import NotificationBell from '@/Components/NotificationBell.vue'
 import Swal from 'sweetalert2'
 
 const page = usePage()
