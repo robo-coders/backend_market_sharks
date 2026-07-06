@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 
 
 Schedule::command('subscriptions:expire')->dailyAt('00:00');
+Schedule::command('signals:monitor')->everyMinute()->withoutOverlapping();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

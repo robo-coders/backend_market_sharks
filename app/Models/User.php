@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Subscription;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -38,8 +39,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'is_anonymous'      => 'boolean',
+            'password' => 'hashed',
+            'is_anonymous' => 'boolean',
         ];
     }
 
@@ -60,6 +61,13 @@ class User extends Authenticatable
     public function paymentRequest()
     {
         return $this->hasOne(\App\Models\PaymentRequest::class)->latest();
+    }
 
+    public function notifications(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Notification::class, 'notification_user', 'user_id', 'notification_id')
+            ->withPivot('read_at')
+            ->withTimestamps()
+            ->latest('notifications.created_at');
     }
 }

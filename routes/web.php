@@ -1,18 +1,40 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\GoldPriceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TradingSignalController;
+use App\Http\Controllers\Admin\MarketStructureController;
+use App\Http\Controllers\Admin\MarketTrendController;
+use App\Http\Controllers\Team\NotificationController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Team\DashboardController as TeamDashboardController;
+use App\Models\MarketStructure;
+use App\Models\MarketTrend;
+use App\Models\TradeLog;
+use App\Models\TradingSignal;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('admin.dashboard')
-        : redirect()->route('login');
+    if (! auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    $user = auth()->user();
+
+    if ($user->hasRole('team')) {
+        return redirect()->route('team.dashboard');
+    }
+
+    if ($user->hasRole('super_admin') || $user->hasRole('admin')) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    return redirect()->route('login');
 })->name('home');
 
 /*
@@ -23,7 +45,6 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified', 'role:super_admin'])
     ->prefix('admin')
     ->group(function () {
-
         Route::get('/admins', [AdminController::class, 'index'])->name('admin.admins.index');
         Route::get('/admins/create', [AdminController::class, 'create'])->name('admin.admins.create');
         Route::post('/admins', [AdminController::class, 'store'])->name('admin.admins.store');
@@ -33,6 +54,75 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
         Route::patch('/admins/{admin}/block', [AdminController::class, 'block'])->name('admin.admins.block');
         Route::patch('/admins/{admin}/unblock', [AdminController::class, 'unblock'])->name('admin.admins.unblock');
 
+        Route::get('/teams', [TeamController::class, 'index'])->name('admin.teams.index');
+        Route::get('/teams/create', [TeamController::class, 'create'])->name('admin.teams.create');
+        Route::post('/teams', [TeamController::class, 'store'])->name('admin.teams.store');
+        Route::get('/teams/{team}/edit', [TeamController::class, 'edit'])->name('admin.teams.edit');
+        Route::put('/teams/{team}', [TeamController::class, 'update'])->name('admin.teams.update');
+        Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('admin.teams.destroy');
+        Route::patch('/teams/{team}/block', [TeamController::class, 'block'])->name('admin.teams.block');
+        Route::patch('/teams/{team}/unblock', [TeamController::class, 'unblock'])->name('admin.teams.unblock');
+
+        // Trading signal management — super admin only
+        Route::get('/signals', function () {
+            $signal = TradingSignal::where('status', 'open')->latest('id')->first()
+                ?? TradingSignal::latest('id')->first();
+
+            $structure = MarketStructure::latest('id')->first();
+            $trend = MarketTrend::latest('id')->first();
+
+            $logs = TradeLog::where('closed_at', '>=', now()->subDays(30))
+                ->latest('closed_at')
+                ->latest('id')
+                ->get()
+                ->map(function ($log) {
+                    $resultLabel = match ($log->result) {
+                        'profit' => 'Profit',
+                        'loss' => 'Loss',
+                        'breakeven' => 'Breakeven',
+                        default => (float) $log->profit_loss >= 0 ? 'Profit' : 'Loss',
+                    };
+
+                    return [
+                        'result' => $resultLabel,
+                        'signal_type' => ucfirst($log->signal_type),
+                        'hit_level' => match ($log->close_reason) {
+                            'tp' => 'Take Profit',
+                            'sl' => 'Stop Loss',
+                            'manual' => 'Manual Close',
+                            'cancelled' => 'Cancelled',
+                            default => 'Closed',
+                        },
+                        'price' => (string) ($log->close_price ?? '0.00'),
+                        'time' => $log->closed_at?->format('d M Y, h:i A') ?? '',
+                    ];
+                })
+                ->values();
+
+            return Inertia::render('Admin/Signals', [
+                'signal' => $signal,
+                'structure' => $structure,
+                'trend' => $trend,
+                'logs' => $logs,
+                'signalStoreUrl' => route('admin.signals.store'),
+                'signalUpdateUrl' => ($signal && $signal->status === 'open')
+                    ? route('admin.signals.update', $signal->id)
+                    : '',
+                'structureUpdateUrl' => route('admin.market-structure.update'),
+                'trendUpdateUrl' => route('admin.market-trend.update'),
+                'livePriceEndpoint' => route('admin.gold-price'),
+                'logsExportUrl' => '',
+                'closeSignalUrl' => ($signal && $signal->status === 'open')
+                    ? route('admin.signals.close', $signal->id)
+                    : '',
+            ]);
+        })->name('admin.signals.index');
+
+        Route::post('/signals', [TradingSignalController::class, 'store'])->name('admin.signals.store');
+        Route::put('/signals/{id}', [TradingSignalController::class, 'update'])->name('admin.signals.update');
+        Route::post('/signals/{id}/close', [TradingSignalController::class, 'close'])->name('admin.signals.close');
+        Route::put('/market-structure', [MarketStructureController::class, 'update'])->name('admin.market-structure.update');
+        Route::put('/market-trend', [MarketTrendController::class, 'update'])->name('admin.market-trend.update');
     });
 
 /*
@@ -43,8 +133,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
 Route::middleware(['auth', 'verified', 'role:super_admin|admin'])
     ->prefix('admin')
     ->group(function () {
-
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
         Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
         Route::get('/users/{user}', [UserController::class, 'show'])->name('admin.users.show');
@@ -57,6 +146,24 @@ Route::middleware(['auth', 'verified', 'role:super_admin|admin'])
         Route::get('/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::post('/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
+        Route::get('/gold-price', [GoldPriceController::class, 'show'])->name('admin.gold-price');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Team
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', 'role:team'])
+    ->prefix('team')
+    ->group(function () {
+        Route::get('/dashboard', [TeamDashboardController::class, 'index'])->name('team.dashboard');
+
+        Route::get('/gold-price', [GoldPriceController::class, 'show'])->name('team.gold-price');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('team.notifications.index');
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('team.notifications.read-all');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('team.notifications.read');
     });
 
 /*
