@@ -81,7 +81,6 @@ const statsConfig = computed(() => [
 
     <AdminLayout>
         <div class="space-y-6">
-
             <div class="relative overflow-hidden rounded-2xl px-6 py-5 flex items-center justify-between" style="isolation: isolate; z-index: 0;">
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,70,229,0.45),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.25),transparent_50%),linear-gradient(135deg,#0f172a,#1e1b4b)]"></div>
                 <div class="absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,rgba(148,163,184,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.1)_1px,transparent_1px)] [background-size:32px_32px]"></div>
@@ -101,7 +100,6 @@ const statsConfig = computed(() => [
                 </span>
             </div>
 
-            <!-- Stats grid -->
             <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <div
                     v-for="stat in statsConfig"
@@ -123,10 +121,7 @@ const statsConfig = computed(() => [
                 </div>
             </div>
 
-            <!-- Bottom grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- WhatsApp Card -->
                 <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-6 pt-5 pb-4 border-b border-gray-50 flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#25D366;">
@@ -180,10 +175,7 @@ const statsConfig = computed(() => [
                     </form>
                 </div>
 
-                <!-- Right column -->
                 <div class="space-y-4">
-
-                    <!-- Member status bars -->
                     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                         <h3 class="text-sm font-semibold text-slate-900 mb-4">Member Breakdown</h3>
                         <div class="space-y-3.5">
@@ -210,7 +202,6 @@ const statsConfig = computed(() => [
                         </div>
                     </div>
 
-                    <!-- Quick actions -->
                     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div class="px-5 pt-4 pb-3 border-b border-gray-50">
                             <h3 class="text-sm font-semibold text-slate-900">Quick Actions</h3>
@@ -240,7 +231,6 @@ const statsConfig = computed(() => [
                             </a>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

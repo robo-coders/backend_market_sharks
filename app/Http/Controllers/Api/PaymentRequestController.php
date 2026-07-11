@@ -43,10 +43,12 @@ class PaymentRequestController extends Controller
                 ], 422);
             }
 
-            if (
-                $authUser->status === 'active' &&
-                $authUser->subscription_status === 'active'
-            ) {
+            $hasActiveSubscription = $authUser->subscription
+                && $authUser->subscription->status === 'active'
+                && $authUser->subscription->expires_at
+                && $authUser->subscription->expires_at->isFuture();
+
+            if ($authUser->status === 'active' && $hasActiveSubscription) {
                 return response()->json([
                     'message' => 'You already have an active plan. Only one plan is allowed at a time.',
                 ], 422);
@@ -100,10 +102,12 @@ class PaymentRequestController extends Controller
                 ], 422);
             }
 
-            if (
-                $existingUser->status === 'active' &&
-                $existingUser->subscription_status === 'active'
-            ) {
+            $hasActiveSubscription = $existingUser->subscription
+                && $existingUser->subscription->status === 'active'
+                && $existingUser->subscription->expires_at
+                && $existingUser->subscription->expires_at->isFuture();
+
+            if ($existingUser->status === 'active' && $hasActiveSubscription) {
                 return response()->json([
                     'message' => 'This account already has an active plan. Please log in instead.',
                 ], 422);

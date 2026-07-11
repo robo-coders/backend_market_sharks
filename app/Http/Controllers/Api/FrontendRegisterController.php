@@ -30,7 +30,7 @@ class FrontendRegisterController extends Controller
             'email'           => $request->email,
             'whatsapp_number' => $request->whatsapp_number,
             'password'        => Hash::make($request->password),
-            'status'          => 'active',
+            'status'          => 'pending',
             'is_anonymous'    => $request->is_anonymous,
             'nickname'        => $request->is_anonymous ? $request->nickname : null,
         ]);

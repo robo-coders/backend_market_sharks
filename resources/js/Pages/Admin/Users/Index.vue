@@ -19,22 +19,31 @@ const isSuperAdmin = computed(() =>
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString() : '—'
 
-const isExpiringSoon = (expiresAt) => {
+const isExpired = (expiresAt) => {
   if (!expiresAt) return false
+  return new Date(expiresAt) <= new Date()
+}
+
+const isExpiringSoon = (expiresAt) => {
+  if (!expiresAt || isExpired(expiresAt)) return false
   const days = (new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24)
-  return days >= 0 && days <= 7
+  return days <= 7
 }
 
 const displayStatus = (user) => {
-  if (user.status === 'pending')        return 'pending'
+  if (user.status === 'pending') return 'pending'
   if (user.status === 'payment_review') return 'payment_review'
-  if (user.status === 'blocked')        return 'blocked'
-  if (user.status === 'rejected')       return 'rejected'
+  if (user.status === 'blocked') return 'blocked'
+  if (user.status === 'rejected') return 'rejected'
+
   if (user.status === 'active') {
-    if (user.subscription?.status === 'expired')       return 'expired'
+    if (isExpired(user.subscription?.expires_at)) return 'expired'
     if (isExpiringSoon(user.subscription?.expires_at)) return 'expiring'
     return 'active'
   }
+
+  if (user.status === 'expired') return 'expired'
+
   return 'pending'
 }
 
@@ -80,10 +89,8 @@ const destroyUser = (id) => {
 
 <template>
   <Head title="Users" />
-
   <AdminLayout>
     <div class="card">
-      <!-- Header + Filters -->
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0 me-3">Users</h5>
 
@@ -131,7 +138,6 @@ const destroyUser = (id) => {
         </ul>
       </div>
 
-      <!-- Table -->
       <div class="table-responsive text-nowrap">
         <table class="table table-hover">
           <thead>
@@ -147,7 +153,7 @@ const destroyUser = (id) => {
 
           <tbody class="table-border-bottom-0">
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="7" class="text-center py-5">
+              <td :colspan="isSuperAdmin ? 6 : 5" class="text-center py-5">
                 <div class="fw-semibold">No users found</div>
                 <div class="text-muted small mt-1">No users match this filter yet.</div>
               </td>
@@ -159,7 +165,6 @@ const destroyUser = (id) => {
               :key="user.id"
               :class="{ 'table-danger': displayStatus(user) === 'expired' }"
             >
-              <!-- Name -->
               <td>
                 <div class="d-flex align-items-center gap-2">
                   <strong>{{ user.display_name }}</strong>
@@ -167,10 +172,8 @@ const destroyUser = (id) => {
                 </div>
               </td>
 
-              <!-- Email -->
               <td v-if="isSuperAdmin">{{ user.email }}</td>
 
-              <!-- Plan -->
               <td>
                 <template v-if="user.status === 'active' && user.subscription?.plan">
                   <span class="fw-semibold text-capitalize">{{ user.subscription.plan }}</span>
@@ -186,26 +189,23 @@ const destroyUser = (id) => {
                 </template>
               </td>
 
-              <!-- Status -->
               <td>
-                <span v-if="displayStatus(user) === 'pending'"             class="badge bg-label-secondary">Pending</span>
+                <span v-if="displayStatus(user) === 'pending'" class="badge bg-label-secondary">Pending</span>
                 <span v-else-if="displayStatus(user) === 'payment_review'" class="badge bg-label-info">Payment Review</span>
-                <span v-else-if="displayStatus(user) === 'blocked'"        class="badge bg-label-dark">Blocked</span>
-                <span v-else-if="displayStatus(user) === 'rejected'"       class="badge bg-label-danger">Rejected</span>
-                <span v-else-if="displayStatus(user) === 'expired'"        class="badge bg-label-danger">Expired</span>
-                <span v-else-if="displayStatus(user) === 'expiring'"       class="badge bg-label-warning">Expiring Soon</span>
+                <span v-else-if="displayStatus(user) === 'blocked'" class="badge bg-label-dark">Blocked</span>
+                <span v-else-if="displayStatus(user) === 'rejected'" class="badge bg-label-danger">Rejected</span>
+                <span v-else-if="displayStatus(user) === 'expired'" class="badge bg-label-danger">Expired</span>
+                <span v-else-if="displayStatus(user) === 'expiring'" class="badge bg-label-warning">Expiring Soon</span>
                 <span v-else class="badge bg-label-success">Active</span>
               </td>
 
-              <!-- Expires -->
               <td>
-                <span v-if="user.status === 'active' && user.subscription?.expires_at">
+                <span v-if="user.subscription?.expires_at">
                   {{ formatDate(user.subscription.expires_at) }}
                 </span>
                 <span v-else class="text-muted">—</span>
               </td>
 
-              <!-- Actions -->
               <td>
                 <div class="d-flex align-items-center gap-2">
                   <a :href="route('admin.users.show', user.id)" class="btn btn-sm btn-icon" title="View">

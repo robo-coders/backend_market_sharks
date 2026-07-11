@@ -11,74 +11,103 @@ const props = defineProps({
 
 const page = usePage()
 
-// TEST CHECK
 const isSuperAdmin = computed(() =>
   page.props.auth?.role_names?.includes('super_admin')
 )
 
-const user    = computed(() => props.user)
-const isAnon  = computed(() => user.value.is_anonymous)
-const status  = computed(() => user.value.status)
+const user = computed(() => props.user)
+const isAnon = computed(() => user.value.is_anonymous)
+const status = computed(() => user.value.status)
+
+const isExpired = (expiresAt) => {
+  if (!expiresAt) return false
+  return new Date(expiresAt) < new Date()
+}
+
+const isExpiringSoon = (expiresAt) => {
+  if (!expiresAt || isExpired(expiresAt)) return false
+  const days = (new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24)
+  return days <= 7
+}
+
+const effectiveStatus = computed(() => {
+  if (status.value === 'active') {
+    if (isExpired(user.value.subscription?.expires_at)) return 'expired'
+    if (isExpiringSoon(user.value.subscription?.expires_at)) return 'expiring'
+    return 'active'
+  }
+
+  return status.value
+})
 
 const statusLabel = computed(() => {
-  if (status.value === 'active') {
-    if (user.value.subscription?.status === 'expired') return 'Expired'
-    return 'Active'
-  }
+  if (effectiveStatus.value === 'active') return 'Active'
+  if (effectiveStatus.value === 'expiring') return 'Expiring Soon'
+
   return {
-    pending:        'Pending',
+    pending: 'Pending',
     payment_review: 'Payment Review',
-    blocked:        'Blocked',
-    rejected:       'Rejected',
-  }[status.value] ?? 'Unknown'
+    blocked: 'Blocked',
+    rejected: 'Rejected',
+    expired: 'Expired',
+  }[effectiveStatus.value] ?? 'Unknown'
 })
+
 const statusBadgeClass = computed(() => {
-  if (status.value === 'active' && user.value.subscription?.status === 'expired') return 'bg-label-danger'
-  if (status.value === 'active')         return 'bg-label-success'
-  if (status.value === 'payment_review') return 'bg-label-info'
-  if (status.value === 'pending')        return 'bg-label-warning'
-  if (status.value === 'blocked' || status.value === 'rejected') return 'bg-label-danger'
+  if (effectiveStatus.value === 'expired') return 'bg-label-danger'
+  if (effectiveStatus.value === 'expiring') return 'bg-label-warning'
+  if (effectiveStatus.value === 'active') return 'bg-label-success'
+  if (effectiveStatus.value === 'payment_review') return 'bg-label-info'
+  if (effectiveStatus.value === 'pending') return 'bg-label-warning'
+  if (effectiveStatus.value === 'blocked' || effectiveStatus.value === 'rejected') return 'bg-label-danger'
   return 'bg-label-secondary'
 })
+
 const planLabel = computed(() => {
-  const plan = status.value === 'active'
-    ? user.value.subscription?.plan
-    : user.value.payment_request?.plan
+  let plan = null
+
+  if (effectiveStatus.value === 'active' || effectiveStatus.value === 'expiring' || effectiveStatus.value === 'expired') {
+    plan = user.value.subscription?.plan
+  } else if (effectiveStatus.value === 'payment_review') {
+    plan = user.value.payment_request?.plan
+  }
+
   if (!plan) return null
   return plan.charAt(0).toUpperCase() + plan.slice(1)
 })
 
 const roleLabel = computed(() => ({
   super_admin: 'Super Admin',
-  admin:       'Admin',
-  user:        'User',
+  admin: 'Admin',
+  user: 'User',
 }[user.value.role] ?? user.value.role))
 
 const roleBadgeClass = computed(() => {
   if (user.value.role === 'super_admin') return 'bg-label-danger'
-  if (user.value.role === 'admin')       return 'bg-label-warning'
+  if (user.value.role === 'admin') return 'bg-label-warning'
   return 'bg-label-secondary'
 })
 
-const formatDate     = (v) => v ? new Date(v).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : null
-const joinedDate     = computed(() => formatDate(user.value.created_at))
-const whatsappLabel  = computed(() => user.value.whatsapp_number ?? null)
+const formatDate = (v) =>
+  v ? new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null
+
+const joinedDate = computed(() => formatDate(user.value.created_at))
+const whatsappLabel = computed(() => user.value.whatsapp_number ?? null)
 
 const expires_at = computed(() => {
-  if (status.value !== 'active') return null
-  return formatDate(user.value.subscription?.expires_at)
+  if (!user.value.subscription?.expires_at) return null
+  return formatDate(user.value.subscription.expires_at)
 })
 
 const showRenewsSoon = computed(() => {
-  if (status.value !== 'active' || !user.value.subscription?.expires_at) return false
-  const days = (new Date(user.value.subscription.expires_at) - new Date()) / (1000 * 60 * 60 * 24)
-  return days <= 7 && days > 0
+  if (effectiveStatus.value !== 'active' && effectiveStatus.value !== 'expiring') return false
+  return isExpiringSoon(user.value.subscription?.expires_at)
 })
 
 const prStatus = computed(() => user.value.payment_request?.status ?? null)
 
 const prStatusClass = computed(() => ({
-  pending:  'ms-pr-badge--pending',
+  pending: 'ms-pr-badge--pending',
   approved: 'ms-pr-badge--approved',
   rejected: 'ms-pr-badge--rejected',
 }[prStatus.value] ?? 'ms-pr-badge--pending'))
@@ -88,7 +117,6 @@ const prStatusLabel = computed(() => prStatus.value
   : null
 )
 
-/* actions */
 const approveUser = () => router.patch(route('admin.users.approve', user.value.id))
 
 const rejectUser = () => {
@@ -117,7 +145,7 @@ const blockUser = () => {
   }).then((r) => {
     if (!r.isConfirmed) return
     router.patch(route('admin.users.block', user.value.id), {}, {
-      onSuccess: () => Swal.fire({ icon:'success', title:'Blocked', timer:1500, showConfirmButton:false }),
+      onSuccess: () => Swal.fire({ icon: 'success', title: 'Blocked', timer: 1500, showConfirmButton: false }),
     })
   })
 }
@@ -131,7 +159,7 @@ const unblockUser = () => {
   }).then((r) => {
     if (!r.isConfirmed) return
     router.patch(route('admin.users.unblock', user.value.id), {}, {
-      onSuccess: () => Swal.fire({ icon:'success', title:'Unblocked', timer:1500, showConfirmButton:false }),
+      onSuccess: () => Swal.fire({ icon: 'success', title: 'Unblocked', timer: 1500, showConfirmButton: false }),
     })
   })
 }
@@ -141,37 +169,33 @@ const unblockUser = () => {
   <Head title="User Profile" />
   <AdminLayout>
     <div class="ms-page">
-
-      <!-- ── HERO BANNER ─────────────────────────────────── -->
       <div class="ms-hero mb-4">
         <div class="ms-hero__bg">
           <div class="ms-hero__grid"></div>
         </div>
 
         <div class="ms-hero__body">
-          <!-- Top row: badge + actions -->
           <div class="ms-hero__topbar">
             <div class="d-flex align-items-center gap-2">
               <span v-if="isAnon" class="ms-chip ms-chip--muted">Anonymous</span>
               <span class="ms-chip" :class="statusBadgeClass">{{ statusLabel }}</span>
             </div>
             <div class="d-flex gap-2">
-              <button v-if="status === 'payment_review'" class="btn btn-primary btn-sm px-3" @click="approveUser">
+              <button v-if="effectiveStatus === 'payment_review'" class="btn btn-primary btn-sm px-3" @click="approveUser">
                 <i class="bx bx-check me-1"></i> Approve
               </button>
-              <button v-if="status === 'payment_review'" class="btn btn-danger btn-sm px-3" @click="rejectUser">
+              <button v-if="effectiveStatus === 'payment_review'" class="btn btn-danger btn-sm px-3" @click="rejectUser">
                 <i class="bx bx-x me-1"></i> Reject
               </button>
-              <button v-else-if="status === 'active'" class="btn btn-danger btn-sm px-3" @click="blockUser">
+              <button v-else-if="effectiveStatus === 'active' || effectiveStatus === 'expiring' || effectiveStatus === 'expired'" class="btn btn-danger btn-sm px-3" @click="blockUser">
                 <i class="bx bx-shield-quarter me-1"></i> Block
               </button>
-              <button v-else-if="status === 'blocked'" class="btn btn-warning btn-sm px-3" @click="unblockUser">
+              <button v-else-if="effectiveStatus === 'blocked'" class="btn btn-warning btn-sm px-3" @click="unblockUser">
                 <i class="bx bx-refresh me-1"></i> Unblock
               </button>
             </div>
           </div>
 
-          <!-- Identity -->
           <div class="ms-hero__identity">
             <div class="ms-hero__avatar">
               <img src="/admin/assets/img/avatars/1.png" alt="avatar" />
@@ -188,7 +212,6 @@ const unblockUser = () => {
           </div>
         </div>
 
-        <!-- Stats strip -->
         <div class="ms-stats-strip">
           <div class="ms-stat-pill">
             <span class="ms-stat-pill__label">Status</span>
@@ -221,10 +244,7 @@ const unblockUser = () => {
         </div>
       </div>
 
-      <!-- ── BOTTOM ROW ───────────────────────────────────── -->
       <div class="row g-4">
-
-        <!-- About -->
         <div class="col-lg-4">
           <div class="ms-card h-100">
             <div class="ms-card__header">
@@ -249,7 +269,7 @@ const unblockUser = () => {
                   <span class="ms-info-row__label">Joined</span>
                   <span class="ms-info-row__value">{{ joinedDate ?? '—' }}</span>
                 </div>
-                <div class="ms-info-row" v-if="user.subscription">
+                <div class="ms-info-row" v-if="user.subscription?.expires_at">
                   <span class="ms-info-row__label">Expires</span>
                   <span class="ms-info-row__value">{{ expires_at ?? '—' }}</span>
                 </div>
@@ -258,7 +278,6 @@ const unblockUser = () => {
           </div>
         </div>
 
-        <!-- Payment Request -->
         <div class="col-lg-8">
           <div class="ms-card h-100">
             <div class="ms-card__header">
@@ -270,8 +289,6 @@ const unblockUser = () => {
             </div>
 
             <div class="ms-card__body">
-
-              <!-- Empty -->
               <template v-if="!user.payment_request">
                 <div class="ms-empty">
                   <i class="bx bx-receipt ms-empty__icon"></i>
@@ -280,7 +297,6 @@ const unblockUser = () => {
                 </div>
               </template>
 
-              <!-- Has request -->
               <template v-else>
                 <div class="row g-4">
                   <div class="col-sm-6">
@@ -321,21 +337,17 @@ const unblockUser = () => {
                   </div>
                 </div>
               </template>
-
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </AdminLayout>
 </template>
 
 <style scoped>
-/* ── Page ─────────────────────────────────────────────── */
 .ms-page { display: flex; flex-direction: column; gap: 0; }
 
-/* ── Hero ─────────────────────────────────────────────── */
 .ms-hero {
   border-radius: 14px;
   overflow: hidden;
@@ -410,7 +422,6 @@ const unblockUser = () => {
 }
 .ms-hero__meta i { margin-right: 4px; vertical-align: middle; }
 
-/* Stats strip */
 .ms-stats-strip {
   position: relative;
   display: flex;
@@ -454,7 +465,6 @@ const unblockUser = () => {
 
 .ms-stat-pill__empty { color: rgba(255,255,255,0.3); font-weight: 400; }
 
-/* Chips */
 .ms-chip {
   display: inline-flex;
   align-items: center;
@@ -465,12 +475,11 @@ const unblockUser = () => {
   letter-spacing: 0.3px;
 }
 .ms-chip--muted  { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
-.ms-chip--warn   { background: rgba(255,159,67,0.2);   color: #ff9f43; }
+.ms-chip--warn   { background: rgba(255,159,67,0.2); color: #ff9f43; }
 .ms-chip--xs     { font-size: 10px; padding: 2px 7px; }
 .ms-ms-1         { margin-left: 4px; }
 .ms-ms-auto      { margin-left: auto; }
 
-/* ── Cards ────────────────────────────────────────────── */
 .ms-card {
   background: #fff;
   border-radius: 12px;
@@ -497,7 +506,6 @@ const unblockUser = () => {
 
 .ms-card__body { padding: 18px; }
 
-/* ── Info list ────────────────────────────────────────── */
 .ms-info-list { display: flex; flex-direction: column; }
 
 .ms-info-row {
@@ -523,7 +531,6 @@ const unblockUser = () => {
   color: rgba(67,89,113,0.9);
 }
 
-/* ── Payment Request badge ────────────────────────────── */
 .ms-pr-badge {
   display: inline-flex;
   align-items: center;
@@ -534,11 +541,10 @@ const unblockUser = () => {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
-.ms-pr-badge--pending  { background: rgba(255,159,67,0.12);  color: #e08c00; }
-.ms-pr-badge--approved { background: rgba(40,199,111,0.12);  color: #1a7a44; }
-.ms-pr-badge--rejected { background: rgba(234,84,85,0.12);   color: #c0392b; }
+.ms-pr-badge--pending  { background: rgba(255,159,67,0.12); color: #e08c00; }
+.ms-pr-badge--approved { background: rgba(40,199,111,0.12); color: #1a7a44; }
+.ms-pr-badge--rejected { background: rgba(234,84,85,0.12); color: #c0392b; }
 
-/* ── Proof image ──────────────────────────────────────── */
 .ms-proof {
   position: relative;
   display: block;
@@ -587,7 +593,6 @@ const unblockUser = () => {
 }
 .ms-proof--empty i { font-size: 1.75rem; }
 
-/* ── Empty state ──────────────────────────────────────── */
 .ms-empty {
   display: flex;
   flex-direction: column;
@@ -600,7 +605,6 @@ const unblockUser = () => {
 .ms-empty__title { font-weight: 600; color: rgba(67,89,113,0.7); margin: 0 0 4px; font-size: 14px; }
 .ms-empty__sub { font-size: 12px; color: rgba(67,89,113,0.45); margin: 0; }
 
-/* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 767px) {
   .ms-stats-strip { flex-wrap: wrap; }
   .ms-stat-pill { flex: 1 1 50%; }

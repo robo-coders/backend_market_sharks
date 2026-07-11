@@ -63,7 +63,6 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
         Route::patch('/teams/{team}/block', [TeamController::class, 'block'])->name('admin.teams.block');
         Route::patch('/teams/{team}/unblock', [TeamController::class, 'unblock'])->name('admin.teams.unblock');
 
-        // Trading signal management — super admin only
         Route::get('/signals', function () {
             $signal = TradingSignal::where('status', 'open')->latest('id')->first()
                 ?? TradingSignal::latest('id')->first();

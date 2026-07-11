@@ -20,33 +20,33 @@ class UserController extends Controller
             ->with(['subscription', 'paymentRequest'])
             ->get();
 
+        $users = $users->map(function ($user) {
+            $user->computed_status = $this->computeStatus($user);
+
+            return $user;
+        });
+
         $counts = [
             'all'            => $users->count(),
-            'pending'        => $users->where('status', 'pending')->count(),
-            'payment_review' => $users->where('status', 'payment_review')->count(),
-            'blocked'        => $users->where('status', 'blocked')->count(),
-            'rejected'       => $users->where('status', 'rejected')->count(),
-            'active'         => $users->filter(
-                                    fn($u) => $u->status === 'active'
-                                        && !$u->subscription?->isExpired()
-                                        && !$u->subscription?->isExpiringSoon()
-                                )->count(),
-            'expiring'       => $users->filter(
-                                    fn($u) => $u->status === 'active'
-                                        && $u->subscription?->isExpiringSoon()
-                                )->count(),
-            'expired'        => $users->filter(
-                                    fn($u) => $u->status === 'active'
-                                        && $u->subscription?->isExpired()
-                                )->count(),
+            'pending'        => $users->where('computed_status', 'pending')->count(),
+            'payment_review' => $users->where('computed_status', 'payment_review')->count(),
+            'blocked'        => $users->where('computed_status', 'blocked')->count(),
+            'rejected'       => $users->where('computed_status', 'rejected')->count(),
+            'active'         => $users->where('computed_status', 'active')->count(),
+            'expiring'       => $users->where('computed_status', 'expiring')->count(),
+            'expired'        => $users->where('computed_status', 'expired')->count(),
         ];
 
         $users = $users->map(function ($user) use ($isSuperAdmin) {
             $data = $user->toArray();
+
+            $data['status'] = $user->computed_status;
+
             if (!$isSuperAdmin) {
-                $data['email']    = '—';
+                $data['email'] = '—';
                 $data['whatsapp'] = '—';
             }
+
             return $data;
         });
 
@@ -60,9 +60,12 @@ class UserController extends Controller
     public function show(User $user)
     {
         $user->load(['subscription', 'paymentRequest']);
+        $user->computed_status = $this->computeStatus($user);
 
         return Inertia::render('Admin/Users/Show', [
-            'user' => $user,
+            'user' => array_merge($user->toArray(), [
+                'status' => $user->computed_status,
+            ]),
         ]);
     }
 
@@ -90,16 +93,17 @@ class UserController extends Controller
                 [
                     'plan'       => $paymentRequest->plan,
                     'starts_at'  => now(),
-                    'expires_at' => now()->addDays(match($paymentRequest->plan) {
-                    'premium' => 90,
-                    default   => 30,
-                }),
+                    'expires_at' => now()->addDays(match ($paymentRequest->plan) {
+                        'premium' => 90,
+                        default   => 30,
+                    }),
                     'status'     => 'active',
                 ]
             );
         });
 
         Mail::to($user->email)->send(new PaymentApproved($user));
+
         return back()->with('success', 'User approved and subscription created.');
     }
 
@@ -124,12 +128,15 @@ class UserController extends Controller
         });
 
         Mail::to($user->email)->send(new PaymentRejected($user));
+
         return back()->with('success', 'Payment request rejected.');
     }
 
     public function block(User $user)
     {
         DB::transaction(function () use ($user) {
+            $user->load('subscription');
+
             $user->update(['status' => 'blocked']);
 
             if ($user->subscription) {
@@ -143,16 +150,21 @@ class UserController extends Controller
     public function unblock(User $user)
     {
         DB::transaction(function () use ($user) {
-            $hasActiveSubscription = $user->subscription
-                && $user->subscription->status !== 'expired'
-                && $user->subscription->status !== 'canceled';
+            $user->load('subscription');
+
+            $hasActiveSubscription =
+                $user->subscription
+                && $user->subscription->expires_at
+                && $user->subscription->expires_at->isFuture();
 
             $user->update([
                 'status' => $hasActiveSubscription ? 'active' : 'pending',
             ]);
 
-            if ($hasActiveSubscription) {
-                $user->subscription->update(['status' => 'active']);
+            if ($user->subscription) {
+                $user->subscription->update([
+                    'status' => $hasActiveSubscription ? 'active' : 'expired',
+                ]);
             }
         });
 
@@ -170,5 +182,32 @@ class UserController extends Controller
         return redirect()
             ->route('admin.users.index')
             ->with('success', 'User deleted successfully.');
+    }
+
+    private function computeStatus(User $user): string
+    {
+        if ($user->status === 'pending') return 'pending';
+        if ($user->status === 'payment_review') return 'payment_review';
+        if ($user->status === 'blocked') return 'blocked';
+        if ($user->status === 'rejected') return 'rejected';
+        if ($user->status === 'expired') return 'expired';
+
+        if ($user->status === 'active') {
+            if (!$user->subscription?->expires_at) {
+                return 'active';
+            }
+
+            if ($user->subscription->expires_at->isPast()) {
+                return 'expired';
+            }
+
+            if ($user->subscription->isExpiringSoon()) {
+                return 'expiring';
+            }
+
+            return 'active';
+        }
+
+        return 'pending';
     }
 }

@@ -43,7 +43,6 @@ class MeController extends Controller
             'expires_at'             => $expiresAt,
             'payment_request_status' => optional($user->paymentRequest)->status,
             'whatsapp_link'          => Setting::get('whatsapp_group_link'),
-
         ]);
     }
 }
