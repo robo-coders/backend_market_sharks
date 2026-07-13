@@ -33,7 +33,17 @@ class MarketStructureController extends Controller
             'support_3' => ['required', 'numeric'],
         ]);
 
-        $marketStructure = MarketStructure::firstOrFail();
+        $marketStructure = MarketStructure::firstOrCreate(
+            [],
+            [
+                'resistance_1' => 0,
+                'resistance_2' => 0,
+                'resistance_3' => 0,
+                'support_1' => 0,
+                'support_2' => 0,
+                'support_3' => 0,
+            ]
+        );
 
         $marketStructure->update([
             ...$validated,

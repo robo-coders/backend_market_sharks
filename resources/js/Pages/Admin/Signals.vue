@@ -28,8 +28,6 @@ const props = defineProps({
     logs: { type: Array, default: () => [] },
     livePriceEndpoint: { type: String, default: '' },
     signalStoreUrl: { type: String, default: '' },
-    // New — actually updates the existing open signal instead of trying
-    // to create a second one (which the "already open" guard now blocks).
     signalUpdateUrl: { type: String, default: '' },
     structureUpdateUrl: { type: String, default: '' },
     trendUpdateUrl: { type: String, default: '' },
@@ -37,28 +35,78 @@ const props = defineProps({
     closeSignalUrl: { type: String, default: '' },
 })
 
-// Whether we're editing an existing open signal (PUT to update it) or
-// there's no open signal yet (POST to create one). Previously this page
-// always POSTed to store(), which — now that duplicate-open signals are
-// blocked server-side — meant editing an existing signal always failed.
 const isEditingExisting = computed(() => Boolean(props.signal?.id) && props.signal?.status !== 'closed')
+
+const DUBAI_TIMEZONE = 'Asia/Dubai'
+const DUBAI_TIMEZONE_LABEL = 'UTC+4 Dubai'
+
+const getDubaiDate = value => {
+    if (!value) return null
+
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value
+    }
+
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+
+    return null
+}
+
+const formatDubaiDateTimeParts = value => {
+    const date = getDubaiDate(value)
+    if (!date) {
+        return { relative: 'Not updated yet', absolute: DUBAI_TIMEZONE_LABEL }
+    }
+
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const minute = 60 * 1000
+    const hour = 60 * minute
+    const day = 24 * hour
+
+    let relative = 'Just now'
+
+    if (diffMs >= day) {
+        const days = Math.floor(diffMs / day)
+        relative = days === 1 ? '1 day ago' : `${days} days ago`
+    } else if (diffMs >= hour) {
+        const hours = Math.floor(diffMs / hour)
+        relative = hours === 1 ? '1 hour ago' : `${hours} hours ago`
+    } else if (diffMs >= minute) {
+        const minutes = Math.floor(diffMs / minute)
+        relative = minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
+    }
+
+    const absolute = new Intl.DateTimeFormat('en-US', {
+        timeZone: DUBAI_TIMEZONE,
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+    }).format(date)
+
+    return { relative, absolute: `${absolute} · ${DUBAI_TIMEZONE_LABEL}` }
+}
 
 const initialSignal = {
     symbol: props.signal?.symbol ?? 'XAUUSD',
     side: props.signal?.side ?? props.signal?.signal_type ?? 'sell',
-    updated_at: props.signal?.updated_at ?? '30 Jun 2026, 10:10 PM',
+    updated_at: props.signal?.updated_at ?? null,
     entry_price: props.signal?.entry_price ?? '2345.10',
     take_profit: props.signal?.take_profit ?? '2358.90',
     stop_loss: props.signal?.stop_loss ?? '2338.40',
 }
 
 const initialStructure = {
-    support_1: props.structure?.support_1 ?? '2340',
-    support_2: props.structure?.support_2 ?? '2334.5',
-    support_3: props.structure?.support_3 ?? '2328.2',
-    resistance_1: props.structure?.resistance_1 ?? '2352.1',
-    resistance_2: props.structure?.resistance_2 ?? '2358.9',
-    resistance_3: props.structure?.resistance_3 ?? '2366.3',
+    support_1: props.structure?.support_1 ?? 0,
+    support_2: props.structure?.support_2 ?? 0,
+    support_3: props.structure?.support_3 ?? 0,
+    resistance_1: props.structure?.resistance_1 ?? 0,
+    resistance_2: props.structure?.resistance_2 ?? 0,
+    resistance_3: props.structure?.resistance_3 ?? 0,
 }
 
 const initialTrend = {
@@ -111,6 +159,8 @@ const feedStatus = computed(() => {
     }
     return { label: 'Live feed active', dot: 'bg-emerald-500', pulse: true }
 })
+
+const signalUpdatedAtParts = computed(() => formatDubaiDateTimeParts(signal.updated_at))
 
 const fetchGoldPrice = async () => {
     priceError.value = false
@@ -182,13 +232,7 @@ const savingTrend = ref(false)
 const closingSignal = ref(false)
 
 const stampSignalUpdatedAt = () => {
-    signal.updated_at = new Date().toLocaleString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    })
+    signal.updated_at = new Date().toISOString()
 }
 
 const updateSignal = () => {
@@ -203,8 +247,6 @@ const updateSignal = () => {
         gold_price_at_entry: Number(goldLivePrice.value.toFixed(2)),
     }
 
-    // Editing an existing open signal → PUT to the update endpoint.
-    // Creating a fresh signal (none currently open) → POST to store.
     if (isEditingExisting.value) {
         if (!props.signalUpdateUrl) {
             savingSignal.value = false
@@ -380,8 +422,6 @@ const closeActiveSignal = () => {
     })
 }
 
-// Real counts derived from the logs the backend actually sent, instead
-// of hardcoded "2 Profit / 1 Loss" text that never matched reality.
 const profitCount = computed(() => props.logs.filter(log => log.result === 'Profit').length)
 const lossCount = computed(() => props.logs.filter(log => log.result === 'Loss').length)
 const breakevenCount = computed(() => props.logs.filter(log => log.result === 'Breakeven').length)
@@ -509,17 +549,17 @@ onBeforeUnmount(() => {
                                 </div>
 
                                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                    <div class="flex items-center justify-between">
-                                        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                            Last Updated
+                                    <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                        Last Updated
+                                    </p>
+                                    <div class="mt-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
+                                        <p class="truncate text-sm font-semibold leading-tight text-slate-800">
+                                            {{ signalUpdatedAtParts.relative }}
+                                        </p>
+                                        <p class="mt-1 truncate text-[11.5px] leading-tight text-slate-500">
+                                            {{ signalUpdatedAtParts.absolute }}
                                         </p>
                                     </div>
-                                    <input
-                                        :value="signal.updated_at"
-                                        type="text"
-                                        readonly
-                                        class="mt-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 outline-none"
-                                    />
                                 </div>
                             </div>
                         </div>
@@ -678,46 +718,46 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div class="space-y-6 p-5 sm:p-6">
+                    <div class="space-y-3 p-4 sm:p-5">
                         <div>
-                            <p class="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 Resistance
                             </p>
-                            <div class="grid grid-cols-3 gap-3.5">
+                            <div class="grid grid-cols-2 gap-2">
                                 <label
                                     v-for="key in ['resistance_1', 'resistance_2', 'resistance_3']"
                                     :key="key"
                                     class="cursor-text"
                                 >
-                                    <span class="mb-2 block text-[11px] font-semibold text-slate-500">
+                                    <span class="mb-1 block text-[11px] font-semibold text-slate-500">
                                         {{ 'R' + key.slice(-1) }}
                                     </span>
                                     <input
                                         v-model="structure[key]"
                                         inputmode="decimal"
-                                        class="h-[70px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[26px] font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                        class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-lg font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                                     />
                                 </label>
                             </div>
                         </div>
 
                         <div>
-                            <p class="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 Support
                             </p>
-                            <div class="grid grid-cols-3 gap-3.5">
+                            <div class="grid grid-cols-2 gap-2">
                                 <label
                                     v-for="key in ['support_1', 'support_2', 'support_3']"
                                     :key="key"
                                     class="cursor-text"
                                 >
-                                    <span class="mb-2 block text-[11px] font-semibold text-slate-500">
+                                    <span class="mb-1 block text-[11px] font-semibold text-slate-500">
                                         {{ 'S' + key.slice(-1) }}
                                     </span>
                                     <input
                                         v-model="structure[key]"
                                         inputmode="decimal"
-                                        class="h-[70px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[26px] font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                        class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-lg font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                                     />
                                 </label>
                             </div>

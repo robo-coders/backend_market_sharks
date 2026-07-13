@@ -71,14 +71,20 @@ const menuLinks = computed(() => {
     return links
 })
 
-const tradingLinks = computed(() => [
-    {
-        label: 'Signals',
-        href: route('admin.signals.index'),
-        active: route().current('admin.signals.*'),
-        icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
-    },
-])
+const tradingLinks = computed(() => {
+    const links = []
+
+    if (isSuperAdmin.value) {
+        links.push({
+            label: 'Signals',
+            href: route('admin.signals.index'),
+            active: route().current('admin.signals.*'),
+            icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
+        })
+    }
+
+    return links
+})
 </script>
 
 <template>
@@ -143,7 +149,7 @@ const tradingLinks = computed(() => [
                     </Link>
                 </div>
 
-                <div>
+                <div v-if="tradingLinks.length">
                     <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-2">Trading</p>
 
                     <Link

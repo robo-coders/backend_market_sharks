@@ -1,6 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, Link } from '@inertiajs/vue3'
 import { Head, router } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import Swal from 'sweetalert2'
@@ -14,6 +14,14 @@ const page = usePage()
 const isSuperAdmin = computed(() =>
   page.props.auth?.role_names?.includes('super_admin')
 )
+
+const notifyToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 2200,
+  timerProgressBar: true,
+})
 
 const user = computed(() => props.user)
 const isAnon = computed(() => user.value.is_anonymous)
@@ -53,15 +61,17 @@ const statusLabel = computed(() => {
   }[effectiveStatus.value] ?? 'Unknown'
 })
 
-const statusBadgeClass = computed(() => {
-  if (effectiveStatus.value === 'expired') return 'bg-label-danger'
-  if (effectiveStatus.value === 'expiring') return 'bg-label-warning'
-  if (effectiveStatus.value === 'active') return 'bg-label-success'
-  if (effectiveStatus.value === 'payment_review') return 'bg-label-info'
-  if (effectiveStatus.value === 'pending') return 'bg-label-warning'
-  if (effectiveStatus.value === 'blocked' || effectiveStatus.value === 'rejected') return 'bg-label-danger'
-  return 'bg-label-secondary'
-})
+// Chip variants designed for the dark hero background — the light
+// bg-label-* tints from the admin theme go muddy on #0d1525.
+const statusChipClass = computed(() => ({
+  active: 'ms-chip--success',
+  expiring: 'ms-chip--warn',
+  payment_review: 'ms-chip--info',
+  pending: 'ms-chip--neutral',
+  expired: 'ms-chip--danger',
+  rejected: 'ms-chip--danger',
+  blocked: 'ms-chip--slate',
+}[effectiveStatus.value] ?? 'ms-chip--neutral'))
 
 const planLabel = computed(() => {
   let plan = null
@@ -80,12 +90,30 @@ const roleLabel = computed(() => ({
   super_admin: 'Super Admin',
   admin: 'Admin',
   user: 'User',
-}[user.value.role] ?? user.value.role))
+}[user.value.role] ?? user.value.role ?? 'User'))
 
 const roleBadgeClass = computed(() => {
   if (user.value.role === 'super_admin') return 'bg-label-danger'
   if (user.value.role === 'admin') return 'bg-label-warning'
   return 'bg-label-secondary'
+})
+
+// Same deterministic 3-tone avatar system as the Users list — a user
+// keeps the same tile color when navigating from list to detail.
+const AVATAR_TONES = [
+  { bg: '#eef2ff', fg: '#4f46e5' },
+  { bg: '#f0f4f8', fg: '#475569' },
+  { bg: '#f5f3ff', fg: '#7c3aed' },
+]
+
+const avatarTone = computed(() => AVATAR_TONES[(user.value.id ?? 0) % AVATAR_TONES.length])
+
+const initials = computed(() => {
+  const name = user.value.display_name
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
 })
 
 const formatDate = (v) =>
@@ -117,7 +145,22 @@ const prStatusLabel = computed(() => prStatus.value
   : null
 )
 
-const approveUser = () => router.patch(route('admin.users.approve', user.value.id))
+const approveUser = () => {
+  Swal.fire({
+    title: 'Approve this payment?',
+    text: 'A subscription will be created and the user will be notified.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, approve',
+  }).then((r) => {
+    if (!r.isConfirmed) return
+    router.patch(route('admin.users.approve', user.value.id), {}, {
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'User approved' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not approve user' }),
+    })
+  })
+}
 
 const rejectUser = () => {
   Swal.fire({
@@ -130,7 +173,9 @@ const rejectUser = () => {
   }).then((r) => {
     if (!r.isConfirmed) return
     router.patch(route('admin.users.reject', user.value.id), {}, {
-      onSuccess: () => Swal.fire({ icon: 'success', title: 'Rejected', timer: 1500, showConfirmButton: false }),
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'Payment rejected' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not reject payment' }),
     })
   })
 }
@@ -145,7 +190,9 @@ const blockUser = () => {
   }).then((r) => {
     if (!r.isConfirmed) return
     router.patch(route('admin.users.block', user.value.id), {}, {
-      onSuccess: () => Swal.fire({ icon: 'success', title: 'Blocked', timer: 1500, showConfirmButton: false }),
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'User blocked' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not block user' }),
     })
   })
 }
@@ -159,7 +206,9 @@ const unblockUser = () => {
   }).then((r) => {
     if (!r.isConfirmed) return
     router.patch(route('admin.users.unblock', user.value.id), {}, {
-      onSuccess: () => Swal.fire({ icon: 'success', title: 'Unblocked', timer: 1500, showConfirmButton: false }),
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'User unblocked' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not unblock user' }),
     })
   })
 }
@@ -169,6 +218,11 @@ const unblockUser = () => {
   <Head title="User Profile" />
   <AdminLayout>
     <div class="ms-page">
+      <Link :href="route('admin.users.index')" class="ms-back">
+        <i class="bx bx-arrow-back"></i>
+        Back to users
+      </Link>
+
       <div class="ms-hero mb-4">
         <div class="ms-hero__bg">
           <div class="ms-hero__grid"></div>
@@ -178,7 +232,7 @@ const unblockUser = () => {
           <div class="ms-hero__topbar">
             <div class="d-flex align-items-center gap-2">
               <span v-if="isAnon" class="ms-chip ms-chip--muted">Anonymous</span>
-              <span class="ms-chip" :class="statusBadgeClass">{{ statusLabel }}</span>
+              <span class="ms-chip" :class="statusChipClass">{{ statusLabel }}</span>
             </div>
             <div class="d-flex gap-2">
               <button v-if="effectiveStatus === 'payment_review'" class="btn btn-primary btn-sm px-3" @click="approveUser">
@@ -197,8 +251,11 @@ const unblockUser = () => {
           </div>
 
           <div class="ms-hero__identity">
-            <div class="ms-hero__avatar">
-              <img src="/admin/assets/img/avatars/1.png" alt="avatar" />
+            <div
+              class="ms-hero__avatar"
+              :style="{ background: avatarTone.bg, color: avatarTone.fg }"
+            >
+              {{ initials }}
             </div>
             <div>
               <h4 class="ms-hero__name">{{ user.display_name }}</h4>
@@ -206,7 +263,6 @@ const unblockUser = () => {
                 <span v-if="isSuperAdmin"><i class="bx bx-envelope"></i> {{ user.email }}</span>
                 <span v-if="joinedDate"><i class="bx bx-calendar"></i> Joined {{ joinedDate }}</span>
                 <span v-if="whatsappLabel && isSuperAdmin"><i class="bx bx-phone"></i> {{ whatsappLabel }}</span>
-                <span><i class="bx bx-map"></i> UAE</span>
               </div>
             </div>
           </div>
@@ -348,6 +404,26 @@ const unblockUser = () => {
 <style scoped>
 .ms-page { display: flex; flex-direction: column; gap: 0; }
 
+.ms-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 550;
+  color: rgba(67, 89, 113, 0.65);
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 5px 9px 5px 6px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.ms-back:hover {
+  background: rgba(67, 89, 113, 0.07);
+  color: rgba(67, 89, 113, 0.95);
+}
+.ms-back i { font-size: 16px; }
+
 .ms-hero {
   border-radius: 14px;
   overflow: hidden;
@@ -397,13 +473,17 @@ const unblockUser = () => {
 .ms-hero__avatar {
   width: 56px;
   height: 56px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2.5px solid rgba(255,255,255,0.25);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
-  background: #1e2a40;
+  box-shadow: 0 0 0 2.5px rgba(255,255,255,0.22);
+  user-select: none;
 }
-.ms-hero__avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .ms-hero__name {
   color: #fff;
@@ -474,11 +554,16 @@ const unblockUser = () => {
   font-weight: 600;
   letter-spacing: 0.3px;
 }
-.ms-chip--muted  { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
-.ms-chip--warn   { background: rgba(255,159,67,0.2); color: #ff9f43; }
-.ms-chip--xs     { font-size: 10px; padding: 2px 7px; }
-.ms-ms-1         { margin-left: 4px; }
-.ms-ms-auto      { margin-left: auto; }
+.ms-chip--muted   { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+.ms-chip--neutral { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.78); }
+.ms-chip--success { background: rgba(61,220,151,0.18);  color: #5eead4; }
+.ms-chip--info    { background: rgba(56,189,248,0.18);  color: #7dd3fc; }
+.ms-chip--warn    { background: rgba(255,159,67,0.2);   color: #ff9f43; }
+.ms-chip--danger  { background: rgba(248,113,113,0.18); color: #fca5a5; }
+.ms-chip--slate   { background: rgba(148,163,184,0.18); color: #cbd5e1; }
+.ms-chip--xs      { font-size: 10px; padding: 2px 7px; }
+.ms-ms-1          { margin-left: 4px; }
+.ms-ms-auto       { margin-left: auto; }
 
 .ms-card {
   background: #fff;
