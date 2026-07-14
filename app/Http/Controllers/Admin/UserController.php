@@ -194,14 +194,14 @@ class UserController extends Controller
 
         if ($user->status === 'active') {
             if (!$user->subscription?->expires_at) {
-                return 'active';
+                return 'pending';
             }
 
             if ($user->subscription->expires_at->isPast()) {
                 return 'expired';
             }
 
-            if ($user->subscription->isExpiringSoon()) {
+            if ($user->subscription->expires_at->isFuture() && $user->subscription->isExpiringSoon()) {
                 return 'expiring';
             }
 

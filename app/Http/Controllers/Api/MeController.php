@@ -21,12 +21,34 @@ class MeController extends Controller
             'paymentRequest',
         ]);
 
+        $subscription = $user->subscription;
+
+        $hasValidSubscription =
+            $subscription
+            && $subscription->expires_at
+            && $subscription->expires_at->isFuture();
+
+        $isExpiredSubscription =
+            $subscription
+            && $subscription->expires_at
+            && $subscription->expires_at->isPast();
+
+        $effectiveStatus = $user->status;
+
+        if ($user->status === 'active') {
+            if (!$subscription || !$subscription->expires_at) {
+                $effectiveStatus = 'pending';
+            } elseif ($isExpiredSubscription) {
+                $effectiveStatus = 'expired';
+            }
+        }
+
         $plan = null;
         $expiresAt = null;
 
-        if ($user->status === 'active' && $user->subscription) {
-            $plan = $user->subscription->plan;
-            $expiresAt = optional($user->subscription->expires_at)?->toDateString();
+        if ($hasValidSubscription) {
+            $plan = $subscription->plan;
+            $expiresAt = $subscription->expires_at->toDateString();
         } else {
             $plan = optional($user->paymentRequest)->plan;
         }
@@ -36,13 +58,13 @@ class MeController extends Controller
                 'id'                  => $user->id,
                 'name'                => $user->display_name,
                 'email'               => $user->email,
-                'status'              => $user->status,
-                'subscription_status' => optional($user->subscription)->status,
+                'status'              => $effectiveStatus,
+                'subscription_status' => $hasValidSubscription ? 'active' : ($isExpiredSubscription ? 'expired' : null),
             ],
             'plan'                   => $plan,
             'expires_at'             => $expiresAt,
             'payment_request_status' => optional($user->paymentRequest)->status,
-            'whatsapp_link'          => Setting::get('whatsapp_group_link'),
+            'whatsapp_link'          => $hasValidSubscription ? Setting::get('whatsapp_group_link') : null,
         ]);
     }
 }

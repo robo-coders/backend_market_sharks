@@ -9,9 +9,16 @@ const props = defineProps({
   filters: Object,
 })
 
+const notifyToast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 2200,
+  timerProgressBar: true,
+})
+
 const search = ref(props.filters?.search ?? '')
 
-// When user types, update URL + fetch fresh data from controller
 let t = null
 watch(search, (val) => {
   clearTimeout(t)
@@ -24,6 +31,39 @@ watch(search, (val) => {
   }, 300)
 })
 
+const AVATAR_TONES = [
+  { bg: '#eef2ff', fg: '#4f46e5' },
+  { bg: '#f0f4f8', fg: '#475569' },
+  { bg: '#f5f3ff', fg: '#7c3aed' },
+]
+
+const avatarTone = (item) => AVATAR_TONES[(item.id ?? 0) % AVATAR_TONES.length]
+
+const initials = (name) => {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
+
+const STATUS_META = {
+  pending: { label: 'Pending', tier: 'neutral', dot: '#94a3b8' },
+  active:  { label: 'Active',  tier: 'neutral', dot: '#10b981' },
+  blocked: { label: 'Blocked', tier: 'blocked', dot: '#64748b' },
+}
+
+const statusMeta = (status) => STATUS_META[status] ?? { label: status, tier: 'neutral', dot: '#94a3b8' }
+
+const formatDate = (value) => {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const formatDateTime = (value) => {
+  if (!value) return ''
+  return new Date(value).toLocaleString()
+}
+
 const destroyAdmin = (id) => {
   Swal.fire({
     title: 'Are you sure?',
@@ -33,28 +73,11 @@ const destroyAdmin = (id) => {
     confirmButtonText: 'Yes, delete it!',
     cancelButtonText: 'Cancel',
   }).then((result) => {
-    if (result.isConfirmed === false) {
-      return
-    }
-
+    if (!result.isConfirmed) return
     router.delete(route('admin.admins.destroy', id), {
-      onSuccess: () => {
-        Swal.fire({
-          title: 'Deleted',
-          text: 'Admin deleted successfully.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-        })
-      },
-
-      onError: () => {
-        Swal.fire({
-          title: 'Error',
-          text: 'Could not delete admin.',
-          icon: 'error',
-        })
-      },
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'Admin deleted' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not delete admin' }),
     })
   })
 }
@@ -62,34 +85,17 @@ const destroyAdmin = (id) => {
 const blockAdmin = (id) => {
   Swal.fire({
     title: 'Block admin?',
-    text: "They will not be able to access the admin panel.",
+    text: 'They will not be able to access the admin panel.',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Yes, block it!',
     cancelButtonText: 'Cancel',
   }).then((result) => {
-    if (result.isConfirmed === false) {
-      return
-    }
-
+    if (!result.isConfirmed) return
     router.patch(route('admin.admins.block', id), {}, {
-      onSuccess: () => {
-        Swal.fire({
-          title: 'Blocked',
-          text: 'Admin blocked successfully.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-        })
-      },
-
-      onError: () => {
-        Swal.fire({
-          title: 'Error',
-          text: 'Could not block admin.',
-          icon: 'error',
-        })
-      },
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'Admin blocked' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not block admin' }),
     })
   })
 }
@@ -103,41 +109,13 @@ const unblockAdmin = (id) => {
     confirmButtonText: 'Yes, unblock',
     cancelButtonText: 'Cancel',
   }).then((result) => {
-    if (result.isConfirmed === false) {
-      return
-    }
-
+    if (!result.isConfirmed) return
     router.patch(route('admin.admins.unblock', id), {}, {
-      onSuccess: () => {
-        Swal.fire({
-          title: 'Unblocked',
-          text: 'Admin unblocked successfully.',
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false,
-        })
-      },
-      onError: () => {
-        Swal.fire({
-          title: 'Error',
-          text: 'Could not unblock admin.',
-          icon: 'error',
-        })
-      },
+      preserveScroll: true,
+      onSuccess: () => notifyToast.fire({ icon: 'success', title: 'Admin unblocked' }),
+      onError: () => notifyToast.fire({ icon: 'error', title: 'Could not unblock admin' }),
     })
   })
-}
-
-
-const formatDateTime = (value) => {
-  if (!value) return '—'
-  return new Date(value).toLocaleString()
-}
-
-const statusBadge = (status) => {
-  if (status === 'pending') return 'bg-label-warning'
-  if (status === 'active') return 'bg-label-success'
-  return 'bg-label-secondary'
 }
 </script>
 
@@ -145,147 +123,520 @@ const statusBadge = (status) => {
   <Head title="Admins" />
 
   <AdminLayout>
-    <div class="card">
-      <!-- Header -->
-      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div>
-          <h5 class="mb-0">Admins</h5>
-          <div class="text-muted small mt-1">Manage admin accounts</div>
+    <div class="ms-card">
+      <div class="ms-toolbar">
+        <div class="ms-toolbar-left">
+          <h5 class="ms-title">Admins</h5>
+          <span class="ms-title-count">{{ admins.length }}</span>
         </div>
 
-        <div class="d-flex align-items-center gap-2">
-          <!-- Working Search -->
-          <!-- <div class="input-group input-group-sm" style="width: 260px;"> -->
-          <div class="input-group input-group-sm w-100 w-sm-auto" style="max-width: 260px;">
-
-            <span class="input-group-text">
-              <i class="bx bx-search"></i>
-            </span>
-            <input
-              v-model="search"
-              type="text"
-              class="form-control"
-              placeholder="Search admins..."
-            />
-          </div>
-
-          <!-- Add admin -->
-          <Link
-            :href="route('admin.admins.create')"
-            class="btn btn-primary btn-sm text-nowrap"
+        <div class="ms-search">
+          <i class="bx bx-search ms-search-icon"></i>
+          <input
+            v-model="search"
+            type="text"
+            class="ms-search-input"
+            placeholder="Search admins…"
+            aria-label="Search admins"
+          />
+          <button
+            v-if="search"
+            type="button"
+            class="ms-search-clear"
+            aria-label="Clear search"
+            @click="search = ''"
           >
-            <i class="bx bx-plus me-1"></i>
-            Add Admin
-          </Link>
+            <i class="bx bx-x"></i>
+          </button>
         </div>
+
+        <Link :href="route('admin.admins.create')" class="ms-add-btn">
+          <i class="bx bx-plus"></i>
+          Add Admin
+        </Link>
       </div>
 
-      <!-- Table -->
-      <div class="table-responsive text-nowrap">
-        <table class="table table-hover">
+      <div class="d-none d-md-block">
+        <table class="ms-table" aria-label="Admins">
           <thead>
             <tr>
-              <th style="width: 90px;">ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone / Whats App</th>
-              <th style="width: 140px;">Status</th>
-              <th style="width: 220px;">Created</th>
-              <th style="width: 120px;">Actions</th>
+              <th scope="col" class="ms-th-name">Name</th>
+              <th scope="col">WhatsApp</th>
+              <th scope="col">Status</th>
+              <th scope="col">Created</th>
+              <th scope="col" class="ms-th-actions"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
 
-          <tbody class="table-border-bottom-0">
-            <!-- Empty state -->
+          <tbody>
             <tr v-if="admins.length === 0">
-              <td colspan="7" class="text-center py-5">
-                <div class="fw-semibold">No admins found</div>
-                <div class="text-muted small mt-1">
-                  Try a different search term.
+              <td colspan="5">
+                <div class="ms-empty">
+                  <div class="ms-empty-icon"><i class="bx bx-shield-x"></i></div>
+                  <p class="ms-empty-title">No admins found</p>
+                  <p class="ms-empty-text">
+                    {{ search ? 'Try a different search term.' : 'Add your first admin to get started.' }}
+                  </p>
                 </div>
               </td>
             </tr>
 
-            <!-- Rows -->
-            <tr v-for="( admin, index) in admins" :key="admin.id">
-              <td class="text-muted">{{ index + 1 }}</td>
-              <td><strong>{{ admin.name }}</strong></td>
-              <td>{{ admin.email }}</td>
-              <td>{{ admin.whatsapp_number }}</td>
+            <tr v-for="admin in admins" :key="admin.id" class="ms-row">
+              <td>
+                <div class="ms-user">
+                  <span
+                    class="ms-avatar"
+                    :style="{ background: avatarTone(admin).bg, color: avatarTone(admin).fg }"
+                    aria-hidden="true"
+                  >
+                    {{ initials(admin.name) }}
+                  </span>
+                  <div class="ms-user-meta">
+                    <span class="ms-user-name" :title="admin.name">{{ admin.name }}</span>
+                    <span class="ms-user-email" :title="admin.email">{{ admin.email }}</span>
+                  </div>
+                </div>
+              </td>
 
               <td>
-                <span class="badge" :class="statusBadge(admin.status)">
-                  {{ admin.status }}
+                <span v-if="admin.whatsapp_number" class="ms-cell-text">{{ admin.whatsapp_number }}</span>
+                <span v-else class="ms-muted">—</span>
+              </td>
+
+              <td>
+                <span class="ms-badge" :class="`tier-${statusMeta(admin.status).tier}`">
+                  <span class="ms-badge-dot" :style="{ background: statusMeta(admin.status).dot }"></span>
+                  {{ statusMeta(admin.status).label }}
                 </span>
               </td>
 
-              <td class="text-muted">
-                {{ formatDateTime(admin.created_at) }}
+              <td>
+                <span class="ms-date" :title="formatDateTime(admin.created_at)">
+                  {{ formatDate(admin.created_at) }}
+                </span>
               </td>
 
-             <td>
-              <div class="d-flex align-items-center gap-1">
+              <td class="ms-td-actions">
+                <div class="ms-actions">
+                  <Link
+                    v-if="admin.status !== 'blocked'"
+                    :href="route('admin.admins.edit', admin.id)"
+                    class="ms-icon-btn"
+                    title="Edit"
+                  >
+                    <i class="bx bx-edit-alt"></i>
+                  </Link>
+                  <button
+                    v-else
+                    type="button"
+                    class="ms-icon-btn is-disabled"
+                    title="Blocked admins can't be edited"
+                    disabled
+                  >
+                    <i class="bx bx-edit-alt"></i>
+                  </button>
 
-                <Link
-                  v-if="admin.status !== 'blocked'"
-                  :href="route('admin.admins.edit', admin.id)"
-                  class="btn btn-sm btn-icon"
-                  title="Edit"
-                >
-                  <i class="bx bx-edit-alt"></i>
-                </Link>
-                <button
-                  v-else
-                  type="button"
-                  class="btn btn-sm btn-icon"
-                  title="Blocked admins can’t be edited"
-                  disabled
-                  style="opacity: 0.5; cursor: not-allowed;"
-                >
-                  <i class="bx bx-edit-alt"></i>
-                </button>
-
-                <button
-                  v-if="admin.status !== 'blocked'"
-                  class="btn btn-sm btn-icon text-black"
-                  title="Block"
-                  @click.prevent="blockAdmin(admin.id)"
+                  <button
+                    v-if="admin.status !== 'blocked'"
+                    type="button"
+                    class="ms-icon-btn"
+                    title="Block"
+                    @click.prevent="blockAdmin(admin.id)"
                   >
                     <i class="bx bx-block"></i>
-                </button>
-
-                <button
+                  </button>
+                  <button
                     v-else
-                    class="btn btn-sm btn-icon text-info"
+                    type="button"
+                    class="ms-icon-btn is-accent"
                     title="Unblock"
                     @click.prevent="unblockAdmin(admin.id)"
                   >
-                    <i class="bx bx-check-circle"></i>
-                </button>
+                    <i class="bx bx-lock-open"></i>
+                  </button>
 
-
-                <button
-                  class="btn btn-sm btn-icon text-danger"
-                  title="Delete"
-                  @click.prevent="destroyAdmin(admin.id)"
-                >
-                  <i class="bx bx-trash"></i>
-                </button>
-              </div>
-            </td>
-
+                  <button
+                    type="button"
+                    class="ms-icon-btn is-danger"
+                    title="Delete"
+                    @click.prevent="destroyAdmin(admin.id)"
+                  >
+                    <i class="bx bx-trash"></i>
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <div class="d-md-none ms-mobile">
+        <div v-if="admins.length === 0" class="ms-empty">
+          <div class="ms-empty-icon"><i class="bx bx-shield-x"></i></div>
+          <p class="ms-empty-title">No admins found</p>
+          <p class="ms-empty-text">
+            {{ search ? 'Try a different search term.' : 'Add your first admin to get started.' }}
+          </p>
+        </div>
+
+        <div v-else v-for="admin in admins" :key="`m-${admin.id}`" class="ms-mobile-card">
+          <div class="ms-mobile-top">
+            <span
+              class="ms-avatar"
+              :style="{ background: avatarTone(admin).bg, color: avatarTone(admin).fg }"
+              aria-hidden="true"
+            >
+              {{ initials(admin.name) }}
+            </span>
+            <div class="ms-user-meta">
+              <span class="ms-user-name" :title="admin.name">{{ admin.name }}</span>
+              <span class="ms-user-email" :title="admin.email">{{ admin.email }}</span>
+            </div>
+          </div>
+
+          <div class="ms-mobile-bottom">
+            <span class="ms-badge" :class="`tier-${statusMeta(admin.status).tier}`">
+              <span class="ms-badge-dot" :style="{ background: statusMeta(admin.status).dot }"></span>
+              {{ statusMeta(admin.status).label }}
+            </span>
+
+            <div class="ms-actions is-static">
+              <Link
+                v-if="admin.status !== 'blocked'"
+                :href="route('admin.admins.edit', admin.id)"
+                class="ms-icon-btn"
+                title="Edit"
+              >
+                <i class="bx bx-edit-alt"></i>
+              </Link>
+              <button
+                v-if="admin.status !== 'blocked'"
+                type="button"
+                class="ms-icon-btn"
+                title="Block"
+                @click.prevent="blockAdmin(admin.id)"
+              >
+                <i class="bx bx-block"></i>
+              </button>
+              <button
+                v-else
+                type="button"
+                class="ms-icon-btn is-accent"
+                title="Unblock"
+                @click.prevent="unblockAdmin(admin.id)"
+              >
+                <i class="bx bx-lock-open"></i>
+              </button>
+              <button
+                type="button"
+                class="ms-icon-btn is-danger"
+                title="Delete"
+                @click.prevent="destroyAdmin(admin.id)"
+              >
+                <i class="bx bx-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </AdminLayout>
 </template>
 
-<style>
-
-.btn.btn-icon:hover {
-  background-color: rgba(0, 0, 0, 0.04) !important;
+<style scoped>
+.ms-card {
+  background: #fff;
+  border: 1px solid #e9ecf1;
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
 }
 
+.ms-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #edf0f4;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+}
+
+.ms-toolbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.ms-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+  color: #0b1220;
+}
+
+.ms-title-count {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #9aa4b2;
+}
+
+.ms-search {
+  position: relative;
+  width: 280px;
+  margin-left: auto;
+}
+
+.ms-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #9aa4b2;
+  pointer-events: none;
+}
+
+.ms-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 32px 0 36px;
+  font-size: 13.5px;
+  color: #0b1220;
+  background: #f7f9fb;
+  border: 1px solid #e7eaef;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.ms-search-input::placeholder { color: #a6b0be; }
+.ms-search-input:hover { border-color: #dbe0e8; }
+.ms-search-input:focus {
+  background: #fff;
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.ms-search-clear {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #9aa4b2;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.ms-search-clear:hover { background: #edf0f4; color: #46536a; }
+
+.ms-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: #696cff;
+  border-radius: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(105, 108, 255, 0.28);
+  transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+
+.ms-add-btn:hover {
+  background: #5f61e6;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(105, 108, 255, 0.34);
+}
+
+.ms-add-btn i { font-size: 16px; }
+
+.ms-table { width: 100%; border-collapse: collapse; }
+
+.ms-table thead th {
+  padding: 10px 24px;
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8a94a6;
+  text-align: left;
+  background: #fafbfc;
+  border-bottom: 1px solid #edf0f4;
+  box-shadow: inset 0 1px 0 #f4f6f9;
+}
+
+.ms-th-name { width: 38%; }
+.ms-th-actions { width: 130px; }
+
+.ms-row { transition: background 0.1s ease; }
+.ms-row + .ms-row td { border-top: 1px solid #f3f5f8; }
+.ms-row:hover { background: #f8fafc; }
+.ms-row td { padding: 11px 24px; vertical-align: middle; }
+
+.ms-user { display: flex; align-items: center; gap: 13px; min-width: 0; }
+
+.ms-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  user-select: none;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.ms-user-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+.ms-user-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #0b1220;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-user-email {
+  font-size: 12.5px;
+  color: #94a0b0;
+  line-height: 1.35;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-cell-text { font-size: 13.5px; color: #46536a; }
+
+.ms-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 560;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.ms-badge-dot { width: 6.5px; height: 6.5px; border-radius: 999px; flex-shrink: 0; }
+
+.ms-badge.tier-neutral { color: #5b6779; background: transparent; border: 1px solid #e7eaef; }
+.ms-badge.tier-blocked { color: #334155; background: #f1f5f9; border: 1px solid #cbd5e1; }
+
+.ms-date { font-size: 13.5px; font-variant-numeric: tabular-nums; color: #46536a; }
+.ms-muted { color: #c6cdd8; }
+
+.ms-td-actions { text-align: right; }
+
+.ms-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ms-actions.is-static { opacity: 1; }
+
+.ms-row:hover .ms-actions,
+.ms-row:focus-within .ms-actions { opacity: 1; }
+
+.ms-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8a94a6;
+  font-size: 17px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.ms-icon-btn:hover { background: #edf0f4; color: #334155; }
+.ms-icon-btn.is-danger:hover { background: #fef2f2; color: #dc2626; }
+.ms-icon-btn.is-accent { color: #6366f1; }
+.ms-icon-btn.is-accent:hover { background: #eef2ff; color: #4f46e5; }
+.ms-icon-btn.is-disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ms-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.ms-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: #f4f6f9;
+  color: #a6b0be;
+  font-size: 22px;
+}
+
+.ms-empty-title { margin: 15px 0 0; font-size: 14px; font-weight: 600; color: #334155; }
+.ms-empty-text { margin: 4px 0 0; font-size: 13px; color: #94a0b0; }
+
+.ms-mobile { padding: 14px; }
+
+.ms-mobile-card {
+  padding: 14px 15px;
+  border: 1px solid #e9ecf1;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.ms-mobile-card + .ms-mobile-card { margin-top: 10px; }
+.ms-mobile-top { display: flex; align-items: center; gap: 12px; }
+
+.ms-mobile-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f5f8;
+}
+
+@media (max-width: 767.98px) {
+  .ms-toolbar { padding: 14px 16px; }
+  .ms-search { width: 100%; order: 3; margin-left: 0; }
+}
 </style>

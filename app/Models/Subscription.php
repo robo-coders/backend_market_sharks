@@ -20,13 +20,14 @@ class Subscription extends Model
 
     public function isExpiringSoon(int $days = 7): bool
     {
-        return $this->status === 'active'
-            && $this->expires_at >= now()
-            && $this->expires_at <= now()->addDays($days);
+        return $this->expires_at
+            && $this->expires_at->isFuture()
+            && $this->expires_at->lte(now()->addDays($days));
     }
 
     public function isExpired(): bool
     {
-        return $this->status === 'expired';
+        return $this->expires_at
+            && $this->expires_at->isPast();
     }
 }
