@@ -44,16 +44,20 @@ class DashboardController extends Controller
                 'updated_at' => $signal?->opened_at?->format('d M Y, h:i A') ?? now()->format('d M Y, h:i A'),
             ],
             'levels' => [
-                'supports' => array_values(array_filter([
+                // Positions preserved (nulls included) rather than
+                // filtered out — filtering + reindexing was shifting
+                // later levels into earlier slots and mislabeling them
+                // (e.g. support_3's value showing under "S2").
+                'supports' => [
                     $structure?->support_1,
                     $structure?->support_2,
                     $structure?->support_3,
-                ], fn ($value) => !is_null($value))),
-                'resistances' => array_values(array_filter([
+                ],
+                'resistances' => [
                     $structure?->resistance_1,
                     $structure?->resistance_2,
                     $structure?->resistance_3,
-                ], fn ($value) => !is_null($value))),
+                ],
                 'updated_at' => $structure?->updated_at?->format('d M Y, h:i A'),
             ],
             'news' => [

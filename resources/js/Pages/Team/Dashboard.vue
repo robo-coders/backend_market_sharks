@@ -179,6 +179,15 @@ const formatUpdatedAt = value => {
     return value
 }
 
+// Renders a structure level as a dash when it hasn't been set (null),
+// instead of dropping it from the array — which would shift every
+// subsequent level up a slot and mislabel it (e.g. S3's value showing
+// under the "S2" label).
+const formatLevel = value => {
+    if (value === null || value === undefined || value === '') return '—'
+    return value
+}
+
 const toastTone = computed(() => {
     if (toast.value.kind === 'structure') {
         return {
@@ -383,7 +392,7 @@ const showStructureToast = structure => {
         type: 'Update',
         title: 'Market structure updated',
         symbol: liveMarket.symbol,
-        detail: `S1 ${structure?.support_1 ?? '-'} · R1 ${structure?.resistance_1 ?? '-'}`,
+        detail: `S1 ${formatLevel(structure?.support_1)} · R1 ${formatLevel(structure?.resistance_1)}`,
         seq: toastSeq,
     }
 
@@ -473,17 +482,21 @@ onMounted(() => {
         })
         .listen('.market-structure.updated', async event => {
             if (event?.structure) {
+                // Positions are preserved even when a value is null — this
+                // is what keeps S1/S2/S3 and R1/R2/R3 correctly labeled.
+                // Filtering nulls out here would shift later values into
+                // earlier slots and mislabel them.
                 liveLevels.value = {
                     supports: [
                         event.structure.support_1,
                         event.structure.support_2,
                         event.structure.support_3,
-                    ].filter(value => value !== null && value !== undefined),
+                    ],
                     resistances: [
                         event.structure.resistance_1,
                         event.structure.resistance_2,
                         event.structure.resistance_3,
-                    ].filter(value => value !== null && value !== undefined),
+                    ],
                 }
 
                 liveStructureUpdatedAt.value = event.structure.updated_at || null
@@ -736,7 +749,7 @@ onBeforeUnmount(() => {
                                     class="flex items-center justify-between rounded-2xl bg-emerald-400/[0.04] px-4 py-3"
                                 >
                                     <span class="text-sm text-white/44">S{{ index + 1 }}</span>
-                                    <span class="text-base font-semibold text-white tabular-nums">{{ level }}</span>
+                                    <span class="text-base font-semibold text-white tabular-nums">{{ formatLevel(level) }}</span>
                                 </div>
                             </div>
 
@@ -748,7 +761,7 @@ onBeforeUnmount(() => {
                                     class="flex items-center justify-between rounded-2xl bg-rose-400/[0.04] px-4 py-3"
                                 >
                                     <span class="text-sm text-white/44">R{{ index + 1 }}</span>
-                                    <span class="text-base font-semibold text-white tabular-nums">{{ level }}</span>
+                                    <span class="text-base font-semibold text-white tabular-nums">{{ formatLevel(level) }}</span>
                                 </div>
                             </div>
                         </div>

@@ -7,9 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Subscription extends Model
 {
-    protected $fillable = ['user_id', 'plan', 'status', 'starts_at', 'expires_at'];
+    protected $fillable = ['user_id', 'plan', 'status', 'starts_at', 'expires_at', 'expiry_reminder_sent_at'];
 
-    protected $casts = ['starts_at' => 'datetime', 'expires_at' => 'datetime'];
+    protected $casts = [
+        'starts_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'expiry_reminder_sent_at' => 'datetime',
+    ];
 
     protected $touches = ['user'];
 

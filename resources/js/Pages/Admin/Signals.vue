@@ -118,6 +118,23 @@ const signal = reactive({ ...initialSignal })
 const structure = reactive({ ...initialStructure })
 const trend = reactive({ ...initialTrend })
 
+// Tracks which structure fields the admin has actually touched since the
+// last successful save. Only these get sent with a real number on
+// Update — everything else goes as null, so the team side can tell
+// exactly which value changed instead of re-broadcasting stale numbers.
+const structureDirty = reactive({
+    support_1: false,
+    support_2: false,
+    support_3: false,
+    resistance_1: false,
+    resistance_2: false,
+    resistance_3: false,
+})
+
+const markStructureDirty = (key) => {
+    structureDirty[key] = true
+}
+
 const trendView = ref('gold')
 
 const goldLivePrice = ref(Number(props.signal?.gold_price_at_entry ?? props.signal?.gold_live_price ?? 2348.72))
@@ -295,14 +312,15 @@ const updateSignal = () => {
 const updateStructure = () => {
     savingStructure.value = true
 
-    const payload = {
-        resistance_1: structure.resistance_1,
-        resistance_2: structure.resistance_2,
-        resistance_3: structure.resistance_3,
-        support_1: structure.support_1,
-        support_2: structure.support_2,
-        support_3: structure.support_3,
-    }
+    const structureKeys = ['resistance_1', 'resistance_2', 'resistance_3', 'support_1', 'support_2', 'support_3']
+
+    // Only fields the admin actually touched (or explicitly zeroed via
+    // Reset) go out with a real number. Everything untouched is sent as
+    // null, so the team dashboard only ever shows what genuinely changed.
+    const payload = {}
+    structureKeys.forEach(key => {
+        payload[key] = structureDirty[key] ? structure[key] : null
+    })
 
     if (!props.structureUpdateUrl) {
         savingStructure.value = false
@@ -313,6 +331,9 @@ const updateStructure = () => {
         preserveScroll: true,
         onSuccess: () => {
             stampSignalUpdatedAt()
+            structureKeys.forEach(key => {
+                structureDirty[key] = false
+            })
             notifyToast.fire({
                 icon: 'success',
                 title: 'Structure updated',
@@ -359,12 +380,29 @@ const updateTrend = async () => {
     }
 }
 
+// Resets the Signal card's three boxes to zero — no longer restores the
+// last-saved entry/TP/SL values, since that made "Reset" indistinguishable
+// from "undo my edit back to what's already live".
 const resetSignal = () => {
-    Object.assign(signal, initialSignal)
+    signal.entry_price = 0
+    signal.take_profit = 0
+    signal.stop_loss = 0
 }
 
+// Zeroes every structure box and marks all six as dirty, so if the admin
+// clicks Update right after Reset, the zeros actually get pushed out
+// instead of being treated as "no change" and sent as null.
 const resetStructure = () => {
-    Object.assign(structure, initialStructure)
+    structure.support_1 = 0
+    structure.support_2 = 0
+    structure.support_3 = 0
+    structure.resistance_1 = 0
+    structure.resistance_2 = 0
+    structure.resistance_3 = 0
+
+    Object.keys(structureDirty).forEach(key => {
+        structureDirty[key] = true
+    })
 }
 
 const resetTrend = () => {
@@ -736,6 +774,7 @@ onBeforeUnmount(() => {
                                         v-model="structure[key]"
                                         inputmode="decimal"
                                         class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-lg font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                        @input="markStructureDirty(key)"
                                     />
                                 </label>
                             </div>
@@ -758,6 +797,7 @@ onBeforeUnmount(() => {
                                         v-model="structure[key]"
                                         inputmode="decimal"
                                         class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-lg font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                        @input="markStructureDirty(key)"
                                     />
                                 </label>
                             </div>

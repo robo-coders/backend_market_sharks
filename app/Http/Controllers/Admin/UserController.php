@@ -7,8 +7,11 @@ use App\Models\User;
 use Inertia\Inertia;
 use App\Mail\PaymentApproved;
 use App\Mail\PaymentRejected;
+use App\Mail\UserBlocked;
+use App\Mail\UserUnblocked;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -102,7 +105,11 @@ class UserController extends Controller
             );
         });
 
-        Mail::to($user->email)->send(new PaymentApproved($user));
+        try {
+            Mail::to($user->email)->send(new PaymentApproved($user));
+        } catch (\Throwable $e) {
+            Log::warning('Approval email failed to send', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'User approved and subscription created.');
     }
@@ -127,7 +134,11 @@ class UserController extends Controller
             $user->update(['status' => 'rejected']);
         });
 
-        Mail::to($user->email)->send(new PaymentRejected($user));
+        try {
+            Mail::to($user->email)->send(new PaymentRejected($user));
+        } catch (\Throwable $e) {
+            Log::warning('Rejection email failed to send', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Payment request rejected.');
     }
@@ -143,6 +154,12 @@ class UserController extends Controller
                 $user->subscription->update(['status' => 'canceled']);
             }
         });
+
+        try {
+            Mail::to($user->email)->send(new UserBlocked($user));
+        } catch (\Throwable $e) {
+            Log::warning('User-blocked email failed to send', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
 
         return back();
     }
@@ -167,6 +184,12 @@ class UserController extends Controller
                 ]);
             }
         });
+
+        try {
+            Mail::to($user->email)->send(new UserUnblocked($user));
+        } catch (\Throwable $e) {
+            Log::warning('User-unblocked email failed to send', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
 
         return back();
     }

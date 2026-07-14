@@ -25,23 +25,23 @@ class MarketStructureController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'resistance_1' => ['required', 'numeric'],
-            'resistance_2' => ['required', 'numeric'],
-            'resistance_3' => ['required', 'numeric'],
-            'support_1' => ['required', 'numeric'],
-            'support_2' => ['required', 'numeric'],
-            'support_3' => ['required', 'numeric'],
+            'resistance_1' => ['nullable', 'numeric'],
+            'resistance_2' => ['nullable', 'numeric'],
+            'resistance_3' => ['nullable', 'numeric'],
+            'support_1' => ['nullable', 'numeric'],
+            'support_2' => ['nullable', 'numeric'],
+            'support_3' => ['nullable', 'numeric'],
         ]);
 
         $marketStructure = MarketStructure::firstOrCreate(
             [],
             [
-                'resistance_1' => 0,
-                'resistance_2' => 0,
-                'resistance_3' => 0,
-                'support_1' => 0,
-                'support_2' => 0,
-                'support_3' => 0,
+                'resistance_1' => null,
+                'resistance_2' => null,
+                'resistance_3' => null,
+                'support_1' => null,
+                'support_2' => null,
+                'support_3' => null,
             ]
         );
 

@@ -98,6 +98,11 @@ const roleBadgeClass = computed(() => {
   return 'bg-label-secondary'
 })
 
+// "Full Name" is a contradiction for anonymous accounts, whose display
+// name is actually a chosen nickname — the label now reflects which one
+// is genuinely being shown, instead of asserting it's a real name.
+const nameFieldLabel = computed(() => (isAnon.value ? 'Nickname' : 'Full Name'))
+
 // Same deterministic 3-tone avatar system as the Users list — a user
 // keeps the same tile color when navigating from list to detail.
 const AVATAR_TONES = [
@@ -270,14 +275,12 @@ const unblockUser = () => {
 
         <div class="ms-stats-strip">
           <div class="ms-stat-pill">
-            <span class="ms-stat-pill__label">Status</span>
-            <span class="ms-stat-pill__value">{{ statusLabel }}</span>
-          </div>
-          <div class="ms-stat-pill__divider"></div>
-          <div class="ms-stat-pill">
             <span class="ms-stat-pill__label">Plan</span>
             <span class="ms-stat-pill__value">
-              <template v-if="planLabel">{{ planLabel }}</template>
+              <span v-if="planLabel" class="ms-chip ms-chip--sm ms-chip--plan">
+                <i class="bx bxs-zap ms-chip__icon"></i>
+                {{ planLabel }}
+              </span>
               <span v-else class="ms-stat-pill__empty">No plan</span>
             </span>
           </div>
@@ -310,7 +313,7 @@ const unblockUser = () => {
             <div class="ms-card__body">
               <div class="ms-info-list">
                 <div class="ms-info-row">
-                  <span class="ms-info-row__label">Full Name</span>
+                  <span class="ms-info-row__label">{{ nameFieldLabel }}</span>
                   <span class="ms-info-row__value">{{ user.display_name }}</span>
                 </div>
                 <div class="ms-info-row">
@@ -515,7 +518,7 @@ const unblockUser = () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   padding: 12px 20px;
 }
 
@@ -548,6 +551,7 @@ const unblockUser = () => {
 .ms-chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 11px;
@@ -561,7 +565,10 @@ const unblockUser = () => {
 .ms-chip--warn    { background: rgba(255,159,67,0.2);   color: #ff9f43; }
 .ms-chip--danger  { background: rgba(248,113,113,0.18); color: #fca5a5; }
 .ms-chip--slate   { background: rgba(148,163,184,0.18); color: #cbd5e1; }
+.ms-chip--plan    { background: rgba(167,139,250,0.16); color: #c4b5fd; }
+.ms-chip--sm      { font-size: 11px; padding: 3px 9px; }
 .ms-chip--xs      { font-size: 10px; padding: 2px 7px; }
+.ms-chip__icon    { font-size: 12px; }
 .ms-ms-1          { margin-left: 4px; }
 .ms-ms-auto       { margin-left: auto; }
 
