@@ -14,16 +14,16 @@ class SignalsMonitor extends Command
     public function handle(SignalCloseService $service): int
     {
         if (!TradingSignal::where('status', 'open')->exists()) {
-            return self::SUCCESS; // nothing to do, exit immediately
+            return self::SUCCESS;
         }
 
-        $deadline = now()->addSeconds(50);
+        $deadline = now()->addSeconds(280); // stay awake ~4m40s, just under the 5-min cron gap
 
         while (now()->lt($deadline)) {
             $service->checkAndCloseIfTriggered();
 
             if (!TradingSignal::where('status', 'open')->exists()) {
-                break; // just closed, no need to keep looping this tick
+                break;
             }
 
             sleep(5);
