@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('subscriptions:expire')->dailyAt('00:00');
 Schedule::command('subscriptions:remind-expiring')->dailyAt('09:00');
-Schedule::command('signals:monitor')->everyMinute()->withoutOverlapping();
+Schedule::command('signals:monitor')->everyFiveMinutes()->withoutOverlapping();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
