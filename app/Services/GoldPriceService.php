@@ -10,10 +10,6 @@ class GoldPriceService
 {
     protected const CACHE_KEY = 'gold_live_price';
 
-    // How long a fetched price is considered fresh before we hit the
-    // provider again. Both the admin and team dashboards read from this
-    // same cache, so the provider is only called once per window,
-    // no matter how many people are watching the dashboard.
     protected const CACHE_TTL_SECONDS = 30;
 
     public function getPrice(): array
@@ -46,9 +42,6 @@ class GoldPriceService
             Log::warning('Gold price fetch failed: ' . $e->getMessage());
         }
 
-        // Provider is down / erroring: serve the last known good price
-        // (if any) instead of breaking the dashboard, but flag it as stale
-        // so the frontend can show a "feed offline" state if it wants to.
         $lastKnown = Cache::get(self::CACHE_KEY);
 
         if ($lastKnown) {

@@ -73,6 +73,86 @@ const formatPrice = value =>
         maximumFractionDigits: 2,
     })
 
+// --- Support/Resistance proximity alerts -------------------------------
+// Fires a toast + beep + browser notification when the live price comes
+// within LEVEL_ALERT_MARGIN dollars of any support or resistance level
+// (an exact match is also within the margin). Alerts fire only when the
+// price ENTERS the range for a given level — not on every poll while it
+// stays there — and re-arm once the price leaves the range or the level
+// value changes.
+const LEVEL_ALERT_MARGIN = 1
+
+let activeLevelAlerts = new Set()
+
+const parseLevelValue = value => {
+    if (value === null || value === undefined || value === '') return null
+    const parsed = Number(String(value).replace(/,/g, ''))
+    return Number.isFinite(parsed) ? parsed : null
+}
+
+const checkLevelProximity = price => {
+    if (!Number.isFinite(price) || price <= 0) return
+
+    const entries = []
+
+    liveLevels.value.supports.forEach((level, index) => {
+        entries.push({ label: `S${index + 1}`, value: parseLevelValue(level) })
+    })
+
+    liveLevels.value.resistances.forEach((level, index) => {
+        entries.push({ label: `R${index + 1}`, value: parseLevelValue(level) })
+    })
+
+    const inRange = new Set()
+    const newlyInRange = []
+
+    entries.forEach(entry => {
+        if (entry.value === null) return
+
+        if (Math.abs(price - entry.value) <= LEVEL_ALERT_MARGIN) {
+            const key = `${entry.label}:${entry.value}`
+            inRange.add(key)
+
+            if (!activeLevelAlerts.has(key)) {
+                newlyInRange.push(entry)
+            }
+        }
+    })
+
+    activeLevelAlerts = inRange
+
+    if (newlyInRange.length) {
+        triggerLevelAlert(price, newlyInRange)
+    }
+}
+
+const sendLevelNotification = (price, detail) => {
+    try {
+        if (!('Notification' in window)) return
+
+        if (Notification.permission === 'granted') {
+            // eslint-disable-next-line no-new
+            new Notification('Price near key level', {
+                body: `${liveMarket.symbol} · Live ${formatPrice(price)} · ${detail}`,
+                tag: 'level-alert',
+            })
+        }
+    } catch (error) {
+        console.error('Level notification failed:', error)
+    }
+}
+
+const triggerLevelAlert = async (price, entries) => {
+    const detail = entries
+        .map(entry => `${entry.label} ${formatPrice(entry.value)}`)
+        .join(' · ')
+
+    showLevelToast(price, detail)
+    sendLevelNotification(price, detail)
+    await playBeep('Level')
+}
+// -----------------------------------------------------------------------
+
 const fetchLivePrice = async () => {
     if (!props.livePriceEndpoint) return
 
@@ -97,6 +177,8 @@ const fetchLivePrice = async () => {
             lastPriceUpdate.value = new Date()
 
             previousPrice.value = next
+
+            checkLevelProximity(next)
         }
     } catch (error) {
         console.error('Live gold price fetch failed:', error)
@@ -211,6 +293,17 @@ const toastTone = computed(() => {
         }
     }
 
+    if (toast.value.kind === 'level') {
+        return {
+            accent: '#c084fc',
+            badgeBg: 'rgba(192,132,252,0.16)',
+            badgeRing: 'rgba(192,132,252,0.28)',
+            iconBg: 'rgba(192,132,252,0.14)',
+            iconRing: 'rgba(192,132,252,0.24)',
+            icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .53-.21 1.04-.59 1.42L4 17h5m6 0v1a3 3 0 11-6 0v-1',
+        }
+    }
+
     if (toast.value.kind === 'closed') {
         return toast.value.type === 'Loss'
             ? {
@@ -253,6 +346,7 @@ const toastTone = computed(() => {
 const toastBadgeLabel = computed(() => {
     if (toast.value.kind === 'structure') return 'Update'
     if (toast.value.kind === 'trend') return 'Trend'
+    if (toast.value.kind === 'level') return 'Level'
     if (toast.value.kind === 'closed') return toast.value.type
     return toast.value.type
 })
@@ -326,6 +420,10 @@ const playBeep = async (type = 'Buy') => {
             } else if (type === 'Trend') {
                 playTone(base, 739.99, { peak: 0.5, duration: 0.26 })
                 playTone(base + 0.16, 932.33, { peak: 0.54, duration: 0.3 })
+            } else if (type === 'Level') {
+                playTone(base, 987.77, { peak: 0.6, duration: 0.3 })
+                playTone(base + 0.14, 1244.51, { peak: 0.64, duration: 0.32 })
+                playTone(base + 0.28, 987.77, { peak: 0.6, duration: 0.34 })
             } else {
                 playTone(base, 880, { peak: 0.62, duration: 0.4 })
                 playTone(base + 0.22, 1108.73, { peak: 0.66, duration: 0.44 })
@@ -415,6 +513,22 @@ const showTrendToast = trend => {
     startToastTimer(TOAST_DURATION_MS)
 }
 
+const showLevelToast = (price, detail) => {
+    resetToast()
+
+    toast.value = {
+        visible: true,
+        kind: 'level',
+        type: 'Level',
+        title: 'Price near key level',
+        symbol: liveMarket.symbol,
+        detail: `Live ${formatPrice(price)} · ${detail}`,
+        seq: toastSeq,
+    }
+
+    startToastTimer(TOAST_DURATION_MS)
+}
+
 const showClosedToast = tradeLog => {
     resetToast()
 
@@ -440,7 +554,20 @@ const downloadLogs = () => {
 }
 
 onMounted(() => {
-    unlockHandler = () => unlockAudio()
+    unlockHandler = () => {
+        unlockAudio()
+
+        // Ask for browser notification permission on the same first
+        // user gesture that unlocks audio, so level alerts can also
+        // fire system notifications.
+        try {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {})
+            }
+        } catch (error) {
+            console.error('Notification permission request failed:', error)
+        }
+    }
     window.addEventListener('click', unlockHandler, { once: true })
 
     fetchLivePrice()
@@ -503,6 +630,11 @@ onMounted(() => {
 
                 showStructureToast(event.structure)
                 await playBeep('Structure')
+
+                // New levels may already be within the alert margin of the
+                // current price — check immediately instead of waiting for
+                // the next price poll.
+                checkLevelProximity(previousPrice.value)
             }
         })
         .listen('.market-trend.updated', async event => {
@@ -521,6 +653,29 @@ onMounted(() => {
                 showTrendToast(normalizedTrend)
                 await playBeep('Trend')
             }
+        })
+        .listen('.level.alert', async event => {
+            if (!event?.levels?.length) return
+
+            // Server-side levels:monitor detected a level hit. Skip any
+            // level the local 5-second poll already alerted on, and
+            // register the rest so the local poll won't double-alert.
+            const fresh = event.levels.filter(level => {
+                const key = `${level.label}:${Number(level.value)}`
+                if (activeLevelAlerts.has(key)) return false
+                activeLevelAlerts.add(key)
+                return true
+            })
+
+            if (!fresh.length) return
+
+            const detail = fresh
+                .map(level => `${level.label} ${formatPrice(Number(level.value))}`)
+                .join(' · ')
+
+            showLevelToast(Number(event.price), detail)
+            sendLevelNotification(Number(event.price), detail)
+            await playBeep('Level')
         })
 })
 
