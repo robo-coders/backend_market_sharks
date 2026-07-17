@@ -7,32 +7,45 @@ use App\Models\TradingSignal;
 use App\Services\LevelAlertService;
 use App\Services\SignalCloseService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class SignalsMonitor extends Command
 {
-    protected $signature = 'signals:monitor';
-    protected $description = 'Watch the open trading signal and auto-close it when TP or SL is hit, and alert when price nears a support/resistance level.';
+    protected $signature = 'signals:monitor {--daemon : Run forever (like queue:work) instead of a single scheduler window}';
+    protected $description = 'Watch the open trading signal (auto-close on TP/SL) and alert when price nears a support/resistance level.';
 
     public function handle(SignalCloseService $service, LevelAlertService $levels): int
     {
-        $hasOpenSignal = TradingSignal::where('status', 'open')->exists();
-        $hasLevels = MarketStructure::query()->exists();
-
-        if (!$hasOpenSignal && !$hasLevels) {
-            return self::SUCCESS;
-        }
-
+        $daemon = (bool) $this->option('daemon');
         $deadline = now()->addSeconds(280);
+        $iteration = 0;
 
-        while (now()->lt($deadline)) {
+        $this->info($daemon ? 'signals:monitor running as daemon (Ctrl+C to stop)…' : 'signals:monitor running one scheduler window…');
+        Log::info('signals:monitor started', ['daemon' => $daemon]);
+
+        while ($daemon || now()->lt($deadline)) {
+            $hasOpenSignal = TradingSignal::where('status', 'open')->exists();
+            $hasLevels = MarketStructure::query()->exists();
+
             if ($hasOpenSignal) {
                 $service->checkAndCloseIfTriggered();
-                $hasOpenSignal = TradingSignal::where('status', 'open')->exists();
             }
 
-            $levels->checkAndNotify();
+            if ($hasLevels) {
+                $levels->checkAndNotify();
+            }
 
-            if (!$hasOpenSignal && !$hasLevels) {
+            if ($iteration % 12 === 0) {
+                Log::info('signals:monitor tick', [
+                    'daemon' => $daemon,
+                    'open_signal' => $hasOpenSignal,
+                    'has_levels' => $hasLevels,
+                ]);
+            }
+
+            $iteration++;
+
+            if (!$daemon && !$hasOpenSignal && !$hasLevels) {
                 break;
             }
 

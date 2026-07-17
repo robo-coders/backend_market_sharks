@@ -63,6 +63,7 @@ class MarketStructureController extends Controller
             ]);
         }
 
+        app(\App\Services\LevelAlertService::class)->checkAndNotify();
         return back()->with('status', [
             'type' => 'success',
             'title' => 'Success',

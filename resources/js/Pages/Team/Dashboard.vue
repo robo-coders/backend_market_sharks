@@ -1,6 +1,6 @@
 <script setup>
 import TeamLayout from '@/Layouts/TeamLayout.vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, usePage } from '@inertiajs/vue3'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
@@ -13,6 +13,9 @@ const props = defineProps({
     livePriceEndpoint: { type: String, default: '' },
     logsExportUrl: { type: String, default: '' },
 })
+
+const page = usePage()
+const isDark = computed(() => (page.props.auth?.user?.theme ?? 'dark') !== 'light')
 
 const normalizeTrendValue = value => {
     if (!value) return 'Neutral'
@@ -208,46 +211,40 @@ const signalAccent = computed(() => {
     if (!hasActiveSignal.value) {
         return {
             glow: 'shadow-[0_0_22px_rgba(148,163,184,0.18)]',
-            pill: 'bg-white/6 text-white/48',
-            dot: 'bg-white/30',
-            text: 'text-white/40',
-            surface: 'from-white/[0.04] to-transparent',
+            dot: 'bg-[var(--text-faint)]',
+            surface: 'from-slate-400/[0.05] to-transparent',
         }
     }
 
     return liveSignal.value.type !== 'Sell'
         ? {
             glow: 'shadow-[0_0_22px_rgba(61,220,151,0.3)]',
-            pill: 'bg-emerald-400/12 text-emerald-200',
-            dot: 'bg-emerald-300',
-            text: 'text-emerald-300',
-            surface: 'from-emerald-400/[0.11] to-transparent',
+            dot: 'bg-[var(--success)]',
+            surface: 'from-emerald-400/[0.09] to-transparent',
         }
         : {
             glow: 'shadow-[0_0_22px_rgba(255,107,129,0.26)]',
-            pill: 'bg-rose-400/12 text-rose-200',
-            dot: 'bg-rose-300',
-            text: 'text-rose-300',
-            surface: 'from-rose-400/[0.11] to-transparent',
+            dot: 'bg-[var(--danger)]',
+            surface: 'from-rose-400/[0.09] to-transparent',
         }
 })
 
 const trendTone = value => {
-    if (value === 'Buy') return 'bg-emerald-400/12 text-emerald-300 ring-1 ring-emerald-400/20'
-    if (value === 'Sell') return 'bg-rose-400/12 text-rose-300 ring-1 ring-rose-400/20'
-    return 'bg-amber-400/12 text-amber-300 ring-1 ring-amber-300/20'
+    if (value === 'Buy') return 'bg-[var(--success-soft)] text-[var(--success-text)] ring-1 ring-[var(--success-ring)]'
+    if (value === 'Sell') return 'bg-[var(--danger-soft)] text-[var(--danger-text)] ring-1 ring-[var(--danger-ring)]'
+    return 'bg-[var(--warning-soft)] text-[var(--warning-text)] ring-1 ring-[var(--warning-ring)]'
 }
 
 const trendDot = value => {
-    if (value === 'Buy') return 'bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.45)]'
-    if (value === 'Sell') return 'bg-rose-300 shadow-[0_0_14px_rgba(253,164,175,0.45)]'
-    return 'bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,0.4)]'
+    if (value === 'Buy') return 'bg-[var(--success)] shadow-[0_0_14px_rgba(61,220,151,0.45)]'
+    if (value === 'Sell') return 'bg-[var(--danger)] shadow-[0_0_14px_rgba(255,107,129,0.45)]'
+    return 'bg-[var(--warning)] shadow-[0_0_14px_rgba(247,198,107,0.4)]'
 }
 
 const logTone = value => {
-    if (value === 'Profit') return 'bg-emerald-400/10 text-emerald-300'
-    if (value === 'Loss') return 'bg-rose-400/10 text-rose-300'
-    return 'bg-amber-400/10 text-amber-300'
+    if (value === 'Profit') return 'bg-[var(--success-soft)] text-[var(--success-text)]'
+    if (value === 'Loss') return 'bg-[var(--danger-soft)] text-[var(--danger-text)]'
+    return 'bg-[var(--warning-soft)] text-[var(--warning-text)]'
 }
 
 const logIconPath = value => {
@@ -273,33 +270,33 @@ const formatLevel = value => {
 const toastTone = computed(() => {
     if (toast.value.kind === 'structure') {
         return {
-            accent: 'var(--info, #5cc8ff)',
-            badgeBg: 'rgba(92,200,255,0.16)',
-            badgeRing: 'rgba(92,200,255,0.28)',
-            iconBg: 'rgba(92,200,255,0.14)',
-            iconRing: 'rgba(92,200,255,0.24)',
+            accent: 'var(--info-dot)',
+            badgeBg: 'var(--info-soft)',
+            badgeRing: 'var(--info-soft)',
+            iconBg: 'var(--info-soft)',
+            iconRing: 'var(--info-soft)',
             icon: 'M12 16v-4M12 8h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 3c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z',
         }
     }
 
     if (toast.value.kind === 'trend') {
         return {
-            accent: 'var(--warning, #f7c948)',
-            badgeBg: 'rgba(247,201,72,0.16)',
-            badgeRing: 'rgba(247,201,72,0.28)',
-            iconBg: 'rgba(247,201,72,0.14)',
-            iconRing: 'rgba(247,201,72,0.24)',
+            accent: 'var(--warning)',
+            badgeBg: 'var(--warning-soft)',
+            badgeRing: 'var(--warning-ring)',
+            iconBg: 'var(--warning-soft)',
+            iconRing: 'var(--warning-ring)',
             icon: 'M3 17l6-6 4 4 7-7',
         }
     }
 
     if (toast.value.kind === 'level') {
         return {
-            accent: '#c084fc',
-            badgeBg: 'rgba(192,132,252,0.16)',
-            badgeRing: 'rgba(192,132,252,0.28)',
-            iconBg: 'rgba(192,132,252,0.14)',
-            iconRing: 'rgba(192,132,252,0.24)',
+            accent: 'var(--level-accent)',
+            badgeBg: 'var(--level-soft)',
+            badgeRing: 'var(--level-soft)',
+            iconBg: 'var(--level-soft)',
+            iconRing: 'var(--level-soft)',
             icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .53-.21 1.04-.59 1.42L4 17h5m6 0v1a3 3 0 11-6 0v-1',
         }
     }
@@ -308,18 +305,18 @@ const toastTone = computed(() => {
         return toast.value.type === 'Loss'
             ? {
                 accent: 'var(--danger)',
-                badgeBg: 'rgba(255,107,129,0.16)',
-                badgeRing: 'rgba(255,107,129,0.28)',
-                iconBg: 'rgba(255,107,129,0.14)',
-                iconRing: 'rgba(255,107,129,0.24)',
+                badgeBg: 'var(--danger-soft)',
+                badgeRing: 'var(--danger-ring)',
+                iconBg: 'var(--danger-soft)',
+                iconRing: 'var(--danger-ring)',
                 icon: 'M6 18L18 6M6 6l12 12',
             }
             : {
                 accent: 'var(--success)',
-                badgeBg: 'rgba(61,220,151,0.16)',
-                badgeRing: 'rgba(61,220,151,0.28)',
-                iconBg: 'rgba(61,220,151,0.14)',
-                iconRing: 'rgba(61,220,151,0.24)',
+                badgeBg: 'var(--success-soft)',
+                badgeRing: 'var(--success-ring)',
+                iconBg: 'var(--success-soft)',
+                iconRing: 'var(--success-ring)',
                 icon: 'M5 13l4 4L19 7',
             }
     }
@@ -327,18 +324,18 @@ const toastTone = computed(() => {
     return toast.value.type === 'Sell'
         ? {
             accent: 'var(--danger)',
-            badgeBg: 'rgba(255,107,129,0.16)',
-            badgeRing: 'rgba(255,107,129,0.28)',
-            iconBg: 'rgba(255,107,129,0.14)',
-            iconRing: 'rgba(255,107,129,0.24)',
+            badgeBg: 'var(--danger-soft)',
+            badgeRing: 'var(--danger-ring)',
+            iconBg: 'var(--danger-soft)',
+            iconRing: 'var(--danger-ring)',
             icon: 'M12 5v14M5 12l7 7 7-7',
         }
         : {
             accent: 'var(--success)',
-            badgeBg: 'rgba(61,220,151,0.16)',
-            badgeRing: 'rgba(61,220,151,0.28)',
-            iconBg: 'rgba(61,220,151,0.14)',
-            iconRing: 'rgba(61,220,151,0.24)',
+            badgeBg: 'var(--success-soft)',
+            badgeRing: 'var(--success-ring)',
+            iconBg: 'var(--success-soft)',
+            iconRing: 'var(--success-ring)',
             icon: 'M12 19V5M5 12l7-7 7 7',
         }
 })
@@ -400,6 +397,9 @@ const playTone = (startTime, frequency, { peak = 0.6, duration = 0.24 } = {}) =>
 }
 
 const playBeep = async (type = 'Buy') => {
+    // Respect the persisted per-user preference (Team Settings → Alert sounds).
+    if (usePage().props.auth?.user?.alert_sounds_muted) return
+
     try {
         await unlockAudio()
         if (!audioCtx) return
@@ -484,13 +484,29 @@ const showSignalToast = type => {
 const showStructureToast = structure => {
     resetToast()
 
+    // Show whichever levels are actually set (up to 3), instead of a
+    // hard-coded "S1 · R1" that renders as dashes when other slots were
+    // the ones updated.
+    const setLevels = [
+        ['S1', structure?.support_1],
+        ['S2', structure?.support_2],
+        ['S3', structure?.support_3],
+        ['R1', structure?.resistance_1],
+        ['R2', structure?.resistance_2],
+        ['R3', structure?.resistance_3],
+    ].filter(([, value]) => value !== null && value !== undefined && value !== '')
+
+    const detail = setLevels.length
+        ? setLevels.slice(0, 3).map(([label, value]) => `${label} ${value}`).join(' · ')
+        : 'All levels cleared'
+
     toast.value = {
         visible: true,
         kind: 'structure',
         type: 'Update',
         title: 'Market structure updated',
         symbol: liveMarket.symbol,
-        detail: `S1 ${formatLevel(structure?.support_1)} · R1 ${formatLevel(structure?.resistance_1)}`,
+        detail,
         seq: toastSeq,
     }
 
@@ -707,15 +723,15 @@ onBeforeUnmount(() => {
     <TeamLayout>
         <div class="space-y-4">
             <section class="grid items-start grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.68fr)_290px]">
-                <div class="rounded-[24px] bg-white/[0.03] p-3.5 shadow-[0_16px_42px_rgba(0,0,0,0.22)] ring-1 ring-white/6">
+                <div class="rounded-[24px] bg-[var(--card-bg)] p-3.5 shadow-[var(--card-shadow-sm)] ring-1 ring-[var(--card-ring)]">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <p class="text-[10px] uppercase tracking-[0.24em] text-white/24">Market intelligence</p>
-                            <p class="mt-0.5 text-[12px] leading-[1.15] text-white/42">Context for fast decisions</p>
+                            <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Market intelligence</p>
+                            <p class="mt-0.5 text-[12px] leading-[1.15] text-[var(--text-tertiary)]">Context for fast decisions</p>
                         </div>
 
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/10 px-2 py-1 text-[10px] font-medium leading-none text-cyan-300">
-                            <span class="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(92,200,255,0.8)]"></span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--info-soft)] px-2 py-1 text-[10px] font-medium leading-none text-[var(--info-text)]">
+                            <span class="h-1.5 w-1.5 rounded-full bg-[var(--info-dot)]"></span>
                             Feed
                         </span>
                     </div>
@@ -724,13 +740,13 @@ onBeforeUnmount(() => {
                         <article
                             v-for="(item, index) in news.slice(0, 2)"
                             :key="`${item.title}-${index}`"
-                            class="rounded-[16px] bg-black/14 px-3.5 py-2.5 transition hover:bg-white/[0.03]"
+                            class="rounded-[16px] bg-[var(--news-bg)] px-3.5 py-2.5 transition hover:bg-[var(--bg-hover)]"
                         >
                             <div class="flex items-start gap-2.5">
-                                <span class="mt-1 h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(92,200,255,0.8)]"></span>
+                                <span class="mt-1 h-2 w-2 rounded-full bg-[var(--info-dot)]"></span>
                                 <div class="min-w-0">
-                                    <p class="text-[13px] leading-[1.35] text-white/88">{{ item.title }}</p>
-                                    <div class="mt-1 flex items-center gap-1.5 text-[10px] leading-none text-white/36">
+                                    <p class="text-[13px] leading-[1.35] text-[var(--text-primary)]">{{ item.title }}</p>
+                                    <div class="mt-1 flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-tertiary)]">
                                         <span>{{ item.source }}</span>
                                         <span>•</span>
                                         <span>{{ item.time }}</span>
@@ -741,20 +757,20 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="self-stretch rounded-[24px] bg-white/[0.03] p-3.5 shadow-[0_16px_42px_rgba(0,0,0,0.22)] ring-1 ring-white/6">
+                <div class="self-stretch rounded-[24px] bg-[var(--card-bg)] p-3.5 shadow-[var(--card-shadow)] ring-1 ring-[var(--card-ring)]">
                     <div class="flex h-full flex-col">
-                        <p class="text-[10px] uppercase tracking-[0.24em] text-white/24">Gold live price</p>
+                        <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Gold live price</p>
 
                         <div class="flex flex-1 flex-col items-center justify-center text-center">
-                            <p class="text-[28px] sm:text-[34px] font-semibold leading-none tracking-[-0.05em] text-white tabular-nums">
+                            <p class="text-[28px] sm:text-[34px] font-semibold leading-none tracking-[-0.05em] text-[var(--text-primary)] tabular-nums">
                                 {{ liveMarket.live_price }}
                             </p>
                         </div>
 
                         <div class="mt-4 flex items-center justify-between gap-2">
-                            <span class="text-[10px] font-medium uppercase tracking-[0.08em] text-white/40">{{ liveMarket.symbol }}</span>
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-2 py-1 text-[10px] font-medium tabular-nums text-white/44">
-                                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_6px_rgba(110,231,183,0.7)]"></span>
+                            <span class="text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">{{ liveMarket.symbol }}</span>
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--chip-bg)] px-2 py-1 text-[10px] font-medium tabular-nums text-[var(--text-tertiary)]">
+                                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)] shadow-[0_0_6px_rgba(61,220,151,0.6)]"></span>
                                 <Transition name="price-label-fade" mode="out-in">
                                     <span :key="displayedPriceLabel" class="inline-block min-w-[54px] text-right">{{ displayedPriceLabel }}</span>
                                 </Transition>
@@ -765,31 +781,33 @@ onBeforeUnmount(() => {
             </section>
 
             <section class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.46fr)_minmax(340px,0.92fr)]">
-                <div class="relative overflow-hidden rounded-[32px] bg-white/[0.035] p-4 shadow-[0_28px_90px_rgba(0,0,0,0.34)] ring-1 ring-white/6 sm:p-5 lg:p-6">
+                <div class="relative overflow-hidden rounded-[32px] bg-[var(--card-bg)] p-4 shadow-[var(--card-shadow-lg)] ring-1 ring-[var(--card-ring)] sm:p-5 lg:p-6">
                     <div :class="['absolute inset-0 bg-gradient-to-br opacity-100', signalAccent.surface]"></div>
-                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(92,200,255,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(47,144,255,0.08),transparent_22%)]"></div>
-                    <div class="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(148,163,184,0.16)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.16)_1px,transparent_1px)] [background-size:24px_24px]"></div>
-                    <div class="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent"></div>
+                    <template v-if="isDark">
+                        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(92,200,255,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(47,144,255,0.08),transparent_22%)]"></div>
+                        <div class="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(148,163,184,0.16)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.16)_1px,transparent_1px)] [background-size:24px_24px]"></div>
+                        <div class="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent"></div>
+                    </template>
 
                     <div class="relative">
                         <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
                             <!-- Active state: headline + symbol pill -->
                             <div v-if="hasActiveSignal" class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2.5">
-                                    <span class="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/48 ring-1 ring-white/8 backdrop-blur-sm">
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] ring-1 ring-[var(--card-ring)] backdrop-blur-sm">
                                         <span class="h-1.5 w-1.5 rounded-full" :class="[signalAccent.dot, signalAccent.glow]"></span>
                                         Active signal
                                     </span>
                                 </div>
 
                                 <div class="mt-5 flex flex-wrap items-end gap-3">
-                                    <h2 class="text-[44px] sm:text-[56px] lg:text-[64px] font-semibold leading-[0.92] tracking-[-0.065em] text-white">
+                                    <h2 class="text-[44px] sm:text-[56px] lg:text-[64px] font-semibold leading-[0.92] tracking-[-0.065em] text-[var(--text-primary)]">
                                         {{ liveSignal.type }}
                                     </h2>
 
                                     <div class="pb-1.5">
-                                        <span class="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3.5 py-2 text-sm font-medium text-white/70 ring-1 ring-white/8 backdrop-blur-sm">
-                                            <span class="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(92,200,255,0.9)]"></span>
+                                        <span class="inline-flex items-center gap-2 rounded-full bg-[var(--chip-bg)] px-3.5 py-2 text-sm font-medium text-[var(--text-secondary)] ring-1 ring-[var(--card-ring)] backdrop-blur-sm">
+                                            <span class="h-2 w-2 rounded-full bg-[var(--info-dot)] shadow-[0_0_12px_rgba(92,200,255,0.6)]"></span>
                                             {{ market.symbol }}
                                         </span>
                                     </div>
@@ -797,9 +815,9 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div v-if="hasActiveSignal" class="lg:pl-3 lg:justify-self-end">
-                                <div class="min-w-[180px] rounded-[22px] bg-black/18 px-4 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                                    <p class="text-[11px] uppercase tracking-[0.24em] text-white/24">Updated</p>
-                                    <p class="mt-2 text-sm font-medium leading-5 text-white/88">{{ liveSignal.updated_at }}</p>
+                                <div class="min-w-[180px] rounded-[22px] bg-[var(--inset-bg)] px-4 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                                    <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Updated</p>
+                                    <p class="mt-2 text-sm font-medium leading-5 text-[var(--text-secondary)]">{{ liveSignal.updated_at }}</p>
                                 </div>
                             </div>
 
@@ -809,24 +827,24 @@ onBeforeUnmount(() => {
                                  left column next to a phantom right box. -->
                             <div v-if="!hasActiveSignal" class="col-span-full">
                                 <div class="flex flex-wrap items-center gap-2.5">
-                                    <span class="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/48 ring-1 ring-white/8 backdrop-blur-sm">
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] ring-1 ring-[var(--card-ring)] backdrop-blur-sm">
                                         <span class="h-1.5 w-1.5 rounded-full" :class="[signalAccent.dot, signalAccent.glow]"></span>
                                         No active signal
                                     </span>
                                 </div>
 
                                 <div class="flex min-h-[150px] sm:min-h-[190px] w-full flex-col items-center justify-center text-center">
-                                    <span class="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full bg-cyan-400/[0.08] ring-1 ring-cyan-300/20">
-                                        <svg class="h-4 w-4 sm:h-4.5 sm:w-4.5 text-cyan-300/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <span class="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full bg-[var(--info-soft)] ring-1 ring-[var(--card-ring)]">
+                                        <svg class="h-4 w-4 sm:h-4.5 sm:w-4.5 text-[var(--info-text)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                             <circle cx="12" cy="12" r="9" />
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5v5l3.2 1.9" />
                                         </svg>
                                     </span>
 
-                                    <p class="mt-3 text-[15px] sm:text-[16px] font-medium text-white/75">
+                                    <p class="mt-3 text-[15px] sm:text-[16px] font-medium text-[var(--text-secondary)]">
                                         Waiting for the next signal
                                     </p>
-                                    <p class="mt-0.5 text-[12px] text-white/32">
+                                    <p class="mt-0.5 text-[12px] text-[var(--text-tertiary)]">
                                         {{ market.symbol }} · Last signal closed
                                     </p>
                                 </div>
@@ -835,48 +853,48 @@ onBeforeUnmount(() => {
 
                         <div
                             class="mt-8 sm:mt-12 grid auto-rows-fr grid-cols-1 gap-3 md:grid-cols-3 transition-opacity duration-300"
-                            :class="!hasActiveSignal && 'opacity-45'"
+                            :class="!hasActiveSignal && 'opacity-60'"
                         >
-                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(6,14,28,0.96),rgba(10,16,28,0.78))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_18px_40px_rgba(0,0,0,0.18)]">
+                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-entry-ring)] [background-image:var(--panel-entry-bg)] px-5 py-5 shadow-[var(--panel-shadow)]">
                                 <div class="flex min-h-[42px] items-start justify-between gap-3">
                                     <div>
-                                        <p class="text-[10px] uppercase tracking-[0.24em] text-white/34">Entry</p>
-                                        <p class="mt-1 text-[11px] font-medium text-cyan-300/72">Execution</p>
+                                        <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Entry</p>
+                                        <p class="mt-1 text-[11px] font-medium text-[var(--info-text)]">Execution</p>
                                     </div>
                                 </div>
 
                                 <div class="flex flex-1 items-end pt-6">
-                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-white tabular-nums">
+                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--text-primary)] tabular-nums">
                                         {{ liveSignal.entry_price }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-emerald-400/10 bg-[linear-gradient(180deg,rgba(7,36,27,0.84),rgba(7,22,18,0.82))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_40px_rgba(0,0,0,0.18)]">
+                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-tp-ring)] [background-image:var(--panel-tp-bg)] px-5 py-5 shadow-[var(--panel-shadow)]">
                                 <div class="flex min-h-[42px] items-start justify-between gap-3">
                                     <div>
-                                        <p class="text-[10px] uppercase tracking-[0.24em] text-emerald-200/48">Take profit</p>
-                                        <p class="mt-1 text-[11px] font-medium text-emerald-300/72">Reward</p>
+                                        <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--success-text)] opacity-70">Take profit</p>
+                                        <p class="mt-1 text-[11px] font-medium text-[var(--success-text)]">Reward</p>
                                     </div>
                                 </div>
 
                                 <div class="flex flex-1 items-end pt-6">
-                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-emerald-300 tabular-nums">
+                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--success-text)] tabular-nums">
                                         {{ liveSignal.take_profit }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-rose-400/10 bg-[linear-gradient(180deg,rgba(43,13,20,0.84),rgba(17,10,15,0.82))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_40px_rgba(0,0,0,0.18)]">
+                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-sl-ring)] [background-image:var(--panel-sl-bg)] px-5 py-5 shadow-[var(--panel-shadow)]">
                                 <div class="flex min-h-[42px] items-start justify-between gap-3">
                                     <div>
-                                        <p class="text-[10px] uppercase tracking-[0.24em] text-rose-200/48">Stop loss</p>
-                                        <p class="mt-1 text-[11px] font-medium text-rose-300/72">Risk</p>
+                                        <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--danger-text)] opacity-70">Stop loss</p>
+                                        <p class="mt-1 text-[11px] font-medium text-[var(--danger-text)]">Risk</p>
                                     </div>
                                 </div>
 
                                 <div class="flex flex-1 items-end pt-6">
-                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-rose-300 tabular-nums">
+                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--danger-text)] tabular-nums">
                                         {{ liveSignal.stop_loss }}
                                     </p>
                                 </div>
@@ -886,55 +904,55 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="grid grid-cols-1 gap-3">
-                    <div class="rounded-[28px] bg-white/[0.03] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.32)] ring-1 ring-white/6">
+                    <div class="rounded-[28px] bg-[var(--card-bg)] p-4 shadow-[var(--card-shadow)] ring-1 ring-[var(--card-ring)]">
                         <div class="flex items-start justify-between gap-3">
-                            <p class="text-[11px] uppercase tracking-[0.24em] text-white/24">Market structure</p>
-                            <div class="rounded-[16px] bg-black/18 px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                                <p class="text-[9px] uppercase tracking-[0.2em] text-white/24">Updated</p>
-                                <p class="mt-1 text-[11px] font-medium leading-4 text-white/80 whitespace-nowrap">{{ formatUpdatedAt(liveStructureUpdatedAt) }}</p>
+                            <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Market structure</p>
+                            <div class="rounded-[16px] bg-[var(--inset-bg)] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                                <p class="text-[9px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Updated</p>
+                                <p class="mt-1 text-[11px] font-medium leading-4 text-[var(--text-secondary)] whitespace-nowrap">{{ formatUpdatedAt(liveStructureUpdatedAt) }}</p>
                             </div>
                         </div>
 
                         <div class="mt-3 grid grid-cols-2 gap-3">
                             <div class="space-y-2.5">
-                                <p class="text-[11px] uppercase tracking-[0.2em] text-white/24">Support</p>
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Support</p>
                                 <div
                                     v-for="(level, index) in liveLevels.supports"
                                     :key="`sup-${index}`"
-                                    class="flex items-center justify-between rounded-2xl bg-emerald-400/[0.04] px-4 py-3"
+                                    class="flex items-center justify-between rounded-2xl bg-[var(--success-softer)] px-4 py-3"
                                 >
-                                    <span class="text-sm text-white/44">S{{ index + 1 }}</span>
-                                    <span class="text-base font-semibold text-white tabular-nums">{{ formatLevel(level) }}</span>
+                                    <span class="text-sm text-[var(--text-tertiary)]">S{{ index + 1 }}</span>
+                                    <span class="text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
                                 </div>
                             </div>
 
                             <div class="space-y-2.5">
-                                <p class="text-[11px] uppercase tracking-[0.2em] text-white/24">Resistance</p>
+                                <p class="text-[11px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Resistance</p>
                                 <div
                                     v-for="(level, index) in liveLevels.resistances"
                                     :key="`res-${index}`"
-                                    class="flex items-center justify-between rounded-2xl bg-rose-400/[0.04] px-4 py-3"
+                                    class="flex items-center justify-between rounded-2xl bg-[var(--danger-softer)] px-4 py-3"
                                 >
-                                    <span class="text-sm text-white/44">R{{ index + 1 }}</span>
-                                    <span class="text-base font-semibold text-white tabular-nums">{{ formatLevel(level) }}</span>
+                                    <span class="text-sm text-[var(--text-tertiary)]">R{{ index + 1 }}</span>
+                                    <span class="text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="rounded-[28px] bg-white/[0.03] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.32)] ring-1 ring-white/6">
+                    <div class="rounded-[28px] bg-[var(--card-bg)] p-4 shadow-[var(--card-shadow)] ring-1 ring-[var(--card-ring)]">
                         <div class="flex items-start justify-between gap-3">
-                            <p class="text-[11px] uppercase tracking-[0.24em] text-white/24">Market Trend</p>
-                            <div class="rounded-[16px] bg-black/18 px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                                <p class="text-[9px] uppercase tracking-[0.2em] text-white/24">Updated</p>
-                                <p class="mt-1 text-[11px] font-medium leading-4 text-white/80 whitespace-nowrap">{{ formatUpdatedAt(liveTrendUpdatedAt) }}</p>
+                            <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Market Trend</p>
+                            <div class="rounded-[16px] bg-[var(--inset-bg)] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                                <p class="text-[9px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Updated</p>
+                                <p class="mt-1 text-[11px] font-medium leading-4 text-[var(--text-secondary)] whitespace-nowrap">{{ formatUpdatedAt(liveTrendUpdatedAt) }}</p>
                             </div>
                         </div>
 
                         <div class="mt-3 grid grid-cols-2 gap-3">
-                            <div class="rounded-[22px] bg-white/[0.03] px-4 py-3 ring-1 ring-white/6">
+                            <div class="rounded-[22px] bg-[var(--bg-elevated)] px-4 py-3 ring-1 ring-[var(--border-faint)]">
                                 <div class="flex items-center justify-between">
-                                    <p class="text-sm font-medium text-white/78">Gold</p>
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">Gold</p>
                                     <span class="h-2.5 w-2.5 rounded-full" :class="trendDot(liveTrend.gold)"></span>
                                 </div>
 
@@ -948,9 +966,9 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <div class="rounded-[22px] bg-white/[0.03] px-4 py-3 ring-1 ring-white/6">
+                            <div class="rounded-[22px] bg-[var(--bg-elevated)] px-4 py-3 ring-1 ring-[var(--border-faint)]">
                                 <div class="flex items-center justify-between">
-                                    <p class="text-sm font-medium text-white/78">Dollar</p>
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">Dollar</p>
                                     <span class="h-2.5 w-2.5 rounded-full" :class="trendDot(liveTrend.dollar)"></span>
                                 </div>
 
@@ -968,27 +986,27 @@ onBeforeUnmount(() => {
                 </div>
             </section>
 
-            <section class="rounded-[28px] bg-white/[0.03] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.32)] ring-1 ring-white/6 sm:p-5">
+            <section class="rounded-[28px] bg-[var(--card-bg)] p-4 shadow-[var(--card-shadow)] ring-1 ring-[var(--card-ring)] sm:p-5">
                 <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-[11px] uppercase tracking-[0.24em] text-white/24">Market Logs</p>
-                        <p class="mt-1 text-sm text-white/42">Operational outcomes and trade events</p>
+                        <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Market Logs</p>
+                        <p class="mt-1 text-sm text-[var(--text-tertiary)]">Operational outcomes and trade events</p>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white/48">
-                            <span class="h-1.5 w-1.5 rounded-full bg-cyan-300/70"></span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">
+                            <span class="h-1.5 w-1.5 rounded-full bg-[var(--info-dot)]"></span>
                             {{ liveLogs.length }} events
                         </span>
 
-                        <span class="rounded-full bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white/48">
+                        <span class="rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">
                             Last 30 days
                         </span>
 
                         <button
                             type="button"
                             title="Download as Excel"
-                            class="inline-flex items-center gap-2 rounded-xl bg-white/[0.07] px-3.5 py-2 text-[12px] font-semibold text-white/85 shadow-[0_10px_24px_rgba(0,0,0,0.2)] transition hover:bg-white/[0.11] disabled:cursor-not-allowed disabled:opacity-40"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[var(--bg-elevated-2)] px-3.5 py-2 text-[12px] font-semibold text-[var(--text-primary)] shadow-[var(--card-shadow-sm)] transition hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                             :disabled="!logsExportUrl"
                             @click="downloadLogs"
                         >
@@ -1004,12 +1022,12 @@ onBeforeUnmount(() => {
                     <div
                         v-for="(log, index) in liveLogs"
                         :key="`${log.time}-${index}`"
-                        class="grid grid-cols-[auto_1fr] items-start gap-3 rounded-[22px] px-3 py-3 transition hover:bg-white/[0.04]"
+                        class="grid grid-cols-[auto_1fr] items-start gap-3 rounded-[22px] px-3 py-3 transition hover:bg-[var(--bg-hover)]"
                     >
                         <span
                             class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1"
                             :class="logTone(log.result)"
-                            style="--tw-ring-color: rgba(255,255,255,0.08)"
+                            style="--tw-ring-color: var(--card-ring)"
                         >
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                                 <path :d="logIconPath(log.result)" stroke-linecap="round" stroke-linejoin="round" />
@@ -1021,21 +1039,21 @@ onBeforeUnmount(() => {
                                 <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="logTone(log.result)">
                                     {{ log.result }}
                                 </span>
-                                <span class="text-sm font-medium text-white/88">{{ log.signal_type }}</span>
-                                <span class="text-sm text-white/30">hit</span>
-                                <span class="text-sm text-white/60">{{ log.hit_level }}</span>
+                                <span class="text-sm font-medium text-[var(--text-primary)]">{{ log.signal_type }}</span>
+                                <span class="text-sm text-[var(--text-faint)]">hit</span>
+                                <span class="text-sm text-[var(--text-secondary)]">{{ log.hit_level }}</span>
                             </div>
 
-                            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/38">
-                                <span>Execution <span class="ml-1 font-medium text-white/76 tabular-nums">{{ log.price }}</span></span>
+                            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--text-tertiary)]">
+                                <span>Execution <span class="ml-1 font-medium text-[var(--text-primary)] tabular-nums">{{ log.price }}</span></span>
                                 <span>{{ log.time }}</span>
                             </div>
                         </div>
                     </div>
 
                     <div v-if="!liveLogs.length" class="flex flex-col items-center justify-center px-6 py-14 text-center">
-                        <p class="text-[13px] font-medium text-white/70">No trade events in the last 30 days</p>
-                        <p class="mt-1 max-w-[15rem] text-[12px] leading-relaxed text-white/32">
+                        <p class="text-[13px] font-medium text-[var(--text-secondary)]">No trade events in the last 30 days</p>
+                        <p class="mt-1 max-w-[15rem] text-[12px] leading-relaxed text-[var(--text-tertiary)]">
                             Closed trades will appear here as they happen.
                         </p>
                     </div>
@@ -1059,11 +1077,11 @@ onBeforeUnmount(() => {
             >
                 <div
                     class="toast-shell pointer-events-auto relative overflow-hidden rounded-[22px] border"
-                    style="
-                        background: linear-gradient(180deg, #0d1621 0%, #0a121c 100%);
-                        border-color: rgba(255,255,255,0.09);
-                        box-shadow: 0 24px 64px -10px rgba(0,0,0,0.6), 0 8px 24px -6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
-                    "
+                    :style="{
+                        background: 'var(--toast-bg)',
+                        borderColor: 'var(--toast-border)',
+                        boxShadow: 'var(--card-shadow-lg)',
+                    }"
                 >
                     <span
                         class="absolute inset-y-0 left-0 w-[3px]"
@@ -1113,7 +1131,7 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
 
-                    <div class="relative h-[2.5px] w-full bg-white/[0.05]">
+                    <div class="relative h-[2.5px] w-full" :style="{ background: 'var(--toast-track)' }">
                         <div
                             :key="toast.seq"
                             class="toast-progress h-full"
@@ -1155,17 +1173,17 @@ onBeforeUnmount(() => {
 
 .market-logs-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+    scrollbar-color: var(--border-soft) transparent;
 }
 .market-logs-scroll::-webkit-scrollbar {
     width: 6px;
 }
 .market-logs-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--border-soft);
     border-radius: 999px;
 }
 .market-logs-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--bg-hover);
 }
 .market-logs-scroll::-webkit-scrollbar-track {
     background: transparent;

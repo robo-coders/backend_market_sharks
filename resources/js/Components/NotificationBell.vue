@@ -25,81 +25,87 @@ const setItemRef = (el, index) => {
 const TYPE_META = {
     buy_open: {
         color: 'var(--success)',
-        bg: 'rgba(61,220,151,0.14)',
-        ring: 'rgba(61,220,151,0.22)',
+        bg: 'var(--success-soft)',
+        ring: 'var(--success-ring)',
         icon: 'M7 17L17 7M7 7h10v10',
     },
     sell_open: {
         color: 'var(--danger)',
-        bg: 'rgba(255,107,129,0.14)',
-        ring: 'rgba(255,107,129,0.22)',
+        bg: 'var(--danger-soft)',
+        ring: 'var(--danger-ring)',
         icon: 'M17 7L7 17M17 17H7V7',
     },
     profit_close: {
         color: 'var(--success)',
-        bg: 'rgba(61,220,151,0.14)',
-        ring: 'rgba(61,220,151,0.22)',
+        bg: 'var(--success-soft)',
+        ring: 'var(--success-ring)',
         icon: 'M5 13l4 4L19 7',
     },
     loss_close: {
         color: 'var(--danger)',
-        bg: 'rgba(255,107,129,0.14)',
-        ring: 'rgba(255,107,129,0.22)',
+        bg: 'var(--danger-soft)',
+        ring: 'var(--danger-ring)',
         icon: 'M6 6l12 12M18 6L6 18',
     },
     breakeven_close: {
         color: 'var(--warning)',
-        bg: 'rgba(247,198,107,0.14)',
-        ring: 'rgba(247,198,107,0.22)',
+        bg: 'var(--warning-soft)',
+        ring: 'var(--warning-ring)',
         icon: 'M4 9h16M4 15h16',
     },
     success: {
         color: 'var(--success)',
-        bg: 'rgba(61,220,151,0.14)',
-        ring: 'rgba(61,220,151,0.22)',
+        bg: 'var(--success-soft)',
+        ring: 'var(--success-ring)',
         icon: 'M5 13l4 4L19 7',
     },
     danger: {
         color: 'var(--danger)',
-        bg: 'rgba(255,107,129,0.14)',
-        ring: 'rgba(255,107,129,0.22)',
+        bg: 'var(--danger-soft)',
+        ring: 'var(--danger-ring)',
         icon: 'M12 5v14M5 12l7 7 7-7',
     },
     info: {
         color: 'var(--accent)',
-        bg: 'rgba(92,200,255,0.14)',
-        ring: 'rgba(92,200,255,0.22)',
+        bg: 'var(--info-soft)',
+        ring: 'var(--info-soft)',
         icon: 'M12 16v-4M12 8h.01',
     },
     warning: {
         color: 'var(--warning)',
-        bg: 'rgba(247,198,107,0.14)',
-        ring: 'rgba(247,198,107,0.22)',
+        bg: 'var(--warning-soft)',
+        ring: 'var(--warning-ring)',
         icon: 'M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0ZM12 9v4M12 17h.01',
     },
     message: {
-        color: '#a78bfa',
-        bg: 'rgba(167,139,250,0.14)',
-        ring: 'rgba(167,139,250,0.22)',
+        color: 'var(--level-accent)',
+        bg: 'var(--level-soft)',
+        ring: 'var(--level-soft)',
         icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5Z',
     },
     team: {
         color: 'var(--text-secondary)',
         bg: 'var(--bg-elevated-2)',
-        ring: 'rgba(255,255,255,0.1)',
+        ring: 'var(--card-ring)',
         icon: 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8ZM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75',
     },
     trend: {
         color: 'var(--warning)',
-        bg: 'rgba(247,198,107,0.14)',
-        ring: 'rgba(247,198,107,0.22)',
+        bg: 'var(--warning-soft)',
+        ring: 'var(--warning-ring)',
         icon: 'M3 17l6-6 4 4 8-8M15 7h6v6',
     },
     structure: {
         color: 'var(--accent)',
-        bg: 'rgba(92,200,255,0.14)',
-        ring: 'rgba(92,200,255,0.22)',
+        bg: 'var(--info-soft)',
+        ring: 'var(--info-soft)',
         icon: 'M12 2L2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5',
+    },
+    level: {
+        color: 'var(--level-accent)',
+        bg: 'var(--level-soft)',
+        ring: 'var(--level-soft)',
+        icon: 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .53-.21 1.04-.59 1.42L4 17h5m6 0v1a3 3 0 11-6 0v-1',
     },
 }
 
@@ -124,6 +130,10 @@ const resolveNotificationType = (notification) => {
 
     if (title.includes('market structure')) {
         return 'structure'
+    }
+
+    if (notification.type === 'level' || title.includes('price near key level')) {
+        return 'level'
     }
 
     return TYPE_META[notification.type] ? notification.type : 'info'
@@ -388,7 +398,9 @@ const markAllAsRead = async () => {
 const toggleDropdown = async () => {
     open.value = !open.value
 
-    if (open.value && !notifications.value.length) {
+    if (open.value) {
+        // Always refetch on open so notifications created server-side
+        // (levels monitor, admin actions) appear without a page refresh.
         await fetchNotifications()
     }
 }
@@ -458,6 +470,33 @@ const prependRealtimeNotification = (payload) => {
         notifications.value = notifications.value.slice(0, 20)
     }
 }
+
+const prependLevelNotification = (payload) => {
+    if (!payload?.levels?.length) return
+
+    const detail = payload.levels
+        .map(level => `${level.label} ${Number(level.value).toFixed(2)}`)
+        .join(' \u00b7 ')
+
+    notifications.value.unshift({
+        id: `temp-level-${Date.now()}`,
+        title: 'Price near key level',
+        body: `Gold ${Number(payload.price).toFixed(2)} near ${detail}.`,
+        type: 'level',
+        read: false,
+        read_at: null,
+        time: new Date().toISOString(),
+        is_temp: true,
+    })
+
+    totalUnreadCount.value += 1
+    visibleCount.value = Math.max(visibleCount.value, 5)
+
+    if (notifications.value.length > 20) {
+        notifications.value = notifications.value.slice(0, 20)
+    }
+}
+
 
 const checkOverflow = () => {
     const el = listEl.value
@@ -541,6 +580,9 @@ onMounted(async () => {
             .listen('.signal.updated', (payload) => {
                 prependRealtimeNotification(payload)
             })
+            .listen('.level.alert', (payload) => {
+                prependLevelNotification(payload)
+            })
     }
 
     document.addEventListener('click', handleOutsideClick)
@@ -578,8 +620,8 @@ onBeforeUnmount(() => {
 
             <span
                 v-if="hasUnread"
-                class="pointer-events-none absolute right-[3px] top-[3px] flex h-4 min-w-[16px] items-center justify-center rounded-full px-[3px] text-[9.5px] font-bold leading-none tracking-tight text-[#0a1220]"
-                style="background: var(--danger); box-shadow: 0 0 0 2.5px var(--bg-app), 0 2px 6px rgba(255,107,129,0.5)"
+                class="pointer-events-none absolute right-[3px] top-[3px] flex h-4 min-w-[16px] items-center justify-center rounded-full px-[3px] text-[9.5px] font-bold leading-none tracking-tight"
+                style="background: var(--danger); color: var(--bg-app); box-shadow: 0 0 0 2.5px var(--bg-app), 0 2px 6px rgba(255,107,129,0.4)"
             >
                 {{ badgeLabel }}
             </span>
@@ -597,9 +639,9 @@ onBeforeUnmount(() => {
                 v-if="open"
                 class="notif-panel absolute right-0 z-50 mt-3 w-[26rem] max-w-[92vw] origin-top-right overflow-hidden rounded-[20px] border"
                 style="
-                    background: linear-gradient(180deg, #0d1621 0%, #0a121c 100%);
-                    border-color: rgba(255,255,255,0.09);
-                    box-shadow: 0 30px 80px -12px rgba(0,0,0,0.65), 0 12px 32px -8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+                    background: var(--toast-bg);
+                    border-color: var(--toast-border);
+                    box-shadow: var(--card-shadow-lg);
                 "
             >
                 <div class="flex items-center justify-between px-5 pb-3 pt-5">
@@ -644,8 +686,8 @@ onBeforeUnmount(() => {
                                 v-if="hasUnread"
                                 class="inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums"
                                 :style="filter === 'unread'
-                                    ? 'background: rgba(92,200,255,0.18); color: var(--accent)'
-                                    : 'background: rgba(255,255,255,0.1); color: var(--text-secondary)'"
+                                    ? 'background: var(--info-soft); color: var(--accent)'
+                                    : 'background: var(--bg-elevated-2); color: var(--text-secondary)'"
                             >
                                 {{ totalUnreadCount }}
                             </span>
@@ -671,11 +713,11 @@ onBeforeUnmount(() => {
                         <div
                             v-for="item in 3"
                             :key="item"
-                            class="rounded-2xl border border-[var(--border-faint)] bg-white/[0.02] p-3.5"
+                            class="rounded-2xl border border-[var(--border-faint)] bg-[var(--bg-elevated)] p-3.5"
                         >
-                            <div class="h-3.5 w-32 animate-pulse rounded bg-white/10"></div>
-                            <div class="mt-2.5 h-3 w-full animate-pulse rounded bg-white/5"></div>
-                            <div class="mt-2 h-3 w-24 animate-pulse rounded bg-white/5"></div>
+                            <div class="h-3.5 w-32 animate-pulse rounded bg-[var(--bg-elevated-2)]"></div>
+                            <div class="mt-2.5 h-3 w-full animate-pulse rounded bg-[var(--bg-elevated)]"></div>
+                            <div class="mt-2 h-3 w-24 animate-pulse rounded bg-[var(--bg-elevated)]"></div>
                         </div>
                     </div>
 
@@ -785,15 +827,15 @@ onBeforeUnmount(() => {
 }
 
 .notif-item.is-unread {
-    background: rgba(92, 200, 255, 0.06);
+    background: var(--info-soft);
 }
 
 .notif-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-hover);
 }
 
 .notif-item.is-unread:hover {
-    background: rgba(92, 200, 255, 0.1);
+    background: var(--info-soft);
 }
 
 .notif-focus:focus-visible {
@@ -802,7 +844,7 @@ onBeforeUnmount(() => {
 
 .notif-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+    scrollbar-color: var(--border-soft) transparent;
     transition: mask-image 0.15s ease;
     -webkit-transition: -webkit-mask-image 0.15s ease;
     overscroll-behavior: contain;
@@ -815,11 +857,11 @@ onBeforeUnmount(() => {
     width: 6px;
 }
 .notif-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--border-soft);
     border-radius: 999px;
 }
 .notif-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--bg-hover);
 }
 .notif-scroll::-webkit-scrollbar-track {
     background: transparent;

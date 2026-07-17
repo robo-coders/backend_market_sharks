@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\TradingSignalController;
 use App\Http\Controllers\Admin\MarketStructureController;
 use App\Http\Controllers\Admin\MarketTrendController;
 use App\Http\Controllers\Team\NotificationController;
+use App\Http\Controllers\Team\SettingsController as TeamSettingsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Team\DashboardController as TeamDashboardController;
 use App\Models\MarketStructure;
@@ -159,6 +160,9 @@ Route::middleware(['auth', 'verified', 'role:team'])
         Route::get('/dashboard', [TeamDashboardController::class, 'index'])->name('team.dashboard');
 
         Route::get('/gold-price', [GoldPriceController::class, 'show'])->name('team.gold-price');
+
+        Route::get('/settings', [TeamSettingsController::class, 'edit'])->name('team.settings.edit');
+        Route::patch('/settings', [TeamSettingsController::class, 'update'])->name('team.settings.update');
 
         Route::get('/notifications', [NotificationController::class, 'index'])->name('team.notifications.index');
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('team.notifications.read-all');
