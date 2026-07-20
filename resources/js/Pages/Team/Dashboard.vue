@@ -738,7 +738,7 @@ onBeforeUnmount(() => {
 
                     <div class="mt-3 space-y-1.5">
                         <article
-                            v-for="(item, index) in news.slice(0, 2)"
+                            v-for="(item, index) in news.slice(0, 4)"
                             :key="`${item.title}-${index}`"
                             class="rounded-[16px] bg-[var(--news-bg)] px-3.5 py-2.5 transition hover:bg-[var(--bg-hover)]"
                         >

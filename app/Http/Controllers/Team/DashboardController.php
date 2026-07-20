@@ -7,6 +7,7 @@ use App\Models\MarketStructure;
 use App\Models\MarketTrend;
 use App\Models\TradeLog;
 use App\Models\TradingSignal;
+use App\Services\ForexNewsService;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -60,23 +61,11 @@ class DashboardController extends Controller
                 ],
                 'updated_at' => $structure?->updated_at?->format('d M Y, h:i A'),
             ],
-            'news' => [
-                [
-                    'title' => 'Gold holds firm as traders watch macro data and dollar movement',
-                    'source' => 'Market Feed',
-                    'time' => '5 min ago',
-                ],
-                [
-                    'title' => 'Forex market remains cautious ahead of upcoming session volatility',
-                    'source' => 'Market Feed',
-                    'time' => '18 min ago',
-                ],
-                [
-                    'title' => 'Risk sentiment softens while gold stays near intraday highs',
-                    'source' => 'Market Feed',
-                    'time' => '34 min ago',
-                ],
-            ],
+            // Live market news: FXStreet headlines + today's high-impact
+            // economic-calendar events, cached 15 min in ForexNewsService.
+            // Falls back to an empty list if the feeds are unreachable, so
+            // the card never breaks.
+            'news' => ForexNewsService::headlines(6),
             'logs' => $logs->map(function ($log) {
                 $resultLabel = match ($log->result) {
                     'profit' => 'Profit',
