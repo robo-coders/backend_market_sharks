@@ -13,6 +13,8 @@ use App\Http\Controllers\Team\NotificationController;
 use App\Http\Controllers\Team\SettingsController as TeamSettingsController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Team\DashboardController as TeamDashboardController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ChatAdminController;
 use App\Models\MarketStructure;
 use App\Models\MarketTrend;
 use App\Models\TradeLog;
@@ -38,11 +40,6 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
-/*
-|--------------------------------------------------------------------------
-| Super Admin Only
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth', 'verified', 'role:super_admin'])
     ->prefix('admin')
     ->group(function () {
@@ -123,13 +120,11 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
         Route::post('/signals/{id}/close', [TradingSignalController::class, 'close'])->name('admin.signals.close');
         Route::put('/market-structure', [MarketStructureController::class, 'update'])->name('admin.market-structure.update');
         Route::put('/market-trend', [MarketTrendController::class, 'update'])->name('admin.market-trend.update');
+
+        // Chat settings - super admin only. Access revocation + feature flags.
+        Route::get('/chat-settings', fn () => Inertia::render('Admin/ChatSettings'))->name('admin.chat-settings');
     });
 
-/*
-|--------------------------------------------------------------------------
-| Admin & Super Admin
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth', 'verified', 'role:super_admin|admin'])
     ->prefix('admin')
     ->group(function () {
@@ -149,11 +144,6 @@ Route::middleware(['auth', 'verified', 'role:super_admin|admin'])
         Route::get('/gold-price', [GoldPriceController::class, 'show'])->name('admin.gold-price');
     });
 
-/*
-|--------------------------------------------------------------------------
-| Team
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth', 'verified', 'role:team'])
     ->prefix('team')
     ->group(function () {
@@ -169,11 +159,31 @@ Route::middleware(['auth', 'verified', 'role:team'])
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('team.notifications.read');
     });
 
-/*
-|--------------------------------------------------------------------------
-| Profile
-|--------------------------------------------------------------------------
-*/
+Route::middleware(['auth', 'verified'])
+    ->prefix('chat')
+    ->group(function () {
+        Route::get('/messages', [ChatController::class, 'index'])->name('chat.messages.index');
+        Route::post('/messages', [ChatController::class, 'store'])
+            ->middleware('throttle:30,1')->name('chat.messages.store');
+
+        Route::put('/messages/{message}', [ChatController::class, 'update'])
+            ->middleware('chat.feature:edit')->name('chat.messages.update');
+        Route::delete('/messages/{message}', [ChatController::class, 'destroy'])
+            ->middleware('chat.feature:delete')->name('chat.messages.destroy');
+
+        Route::get('/unread', [ChatController::class, 'unreadCount'])->name('chat.unread');
+        Route::post('/read', [ChatController::class, 'markRead'])->name('chat.read');
+    });
+
+Route::middleware(['auth', 'verified', 'role:super_admin'])
+    ->prefix('chat/admin')
+    ->group(function () {
+        Route::get('/', [ChatAdminController::class, 'index'])->name('chat.admin.index');
+        Route::post('/users/{user}/access', [ChatAdminController::class, 'setUserAccess'])->name('chat.admin.users.access');
+        Route::post('/roles/access', [ChatAdminController::class, 'setRoleAccess'])->name('chat.admin.roles.access');
+        Route::post('/features', [ChatAdminController::class, 'updateFeature'])->name('chat.admin.features');
+    });
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

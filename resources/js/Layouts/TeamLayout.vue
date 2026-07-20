@@ -2,6 +2,7 @@
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 import NotificationBell from '@/Components/NotificationBell.vue'
+import ChatWidget from '@/Components/Chat/ChatWidget.vue'
 import Swal from 'sweetalert2'
 
 const page = usePage()
@@ -10,9 +11,6 @@ const sidebarOpen = ref(false)
 const sidebarCollapsed = ref(false)
 const userMenuOpen = ref(false)
 
-// Theme comes from the persisted user preference (users.theme).
-// Inertia refreshes auth.user after the settings PATCH, so a change
-// on the Settings page propagates app-wide immediately.
 const isDark = computed(() => (user.value?.theme ?? 'dark') !== 'light')
 
 const navigation = computed(() => [
@@ -30,8 +28,6 @@ const navigation = computed(() => [
     },
 ])
 
-// On mobile, the slide-out overlay should always show the full nav
-// width regardless of the desktop-only collapsed preference.
 const sidebarWidth = computed(() => {
     if (sidebarOpen.value) return '288px'
     return sidebarCollapsed.value ? '88px' : '288px'
@@ -446,5 +442,6 @@ watch(
                 </main>
             </div>
         </div>
+        <ChatWidget />
     </div>
 </template>

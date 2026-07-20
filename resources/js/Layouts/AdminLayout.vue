@@ -1,6 +1,7 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
+import ChatWidget from '@/Components/Chat/ChatWidget.vue'
 import Swal from 'sweetalert2'
 
 const page = usePage()
@@ -85,6 +86,26 @@ const tradingLinks = computed(() => {
 
     return links
 })
+
+// Settings section — general app settings + chat settings, super admin only.
+const settingsLinks = computed(() => {
+    if (!isSuperAdmin.value) return []
+
+    return [
+        {
+            label: 'General',
+            href: route('admin.settings.edit'),
+            active: route().current('admin.settings.edit'),
+            icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
+        },
+        {
+            label: 'Chat Settings',
+            href: route('admin.chat-settings'),
+            active: route().current('admin.chat-settings'),
+            icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.7 9.7 0 0 1-4-.85L3 20l1.35-3.5A7.5 7.5 0 0 1 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z',
+        },
+    ]
+})
 </script>
 
 <template>
@@ -154,6 +175,34 @@ const tradingLinks = computed(() => {
 
                     <Link
                         v-for="link in tradingLinks"
+                        :key="link.label"
+                        :href="link.href"
+                        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group"
+                        :class="link.active
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
+                        @click="sidebarOpen = false"
+                    >
+                        <svg
+                            class="w-4 h-4 shrink-0 transition-colors"
+                            :class="link.active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" :d="link.icon" />
+                        </svg>
+                        {{ link.label }}
+                        <span v-if="link.active" class="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    </Link>
+                </div>
+
+                <div v-if="settingsLinks.length">
+                    <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-2">Settings</p>
+
+                    <Link
+                        v-for="link in settingsLinks"
                         :key="link.label"
                         :href="link.href"
                         class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group"
@@ -262,24 +311,22 @@ const tradingLinks = computed(() => {
                 <slot />
             </main>
 
+            <!-- Single centered line so the chat launcher (bottom-right)
+                 never overlaps it. -->
             <footer class="px-6 py-4 border-t border-slate-100 bg-white">
-                <div class="flex items-center justify-between">
-                    <p class="text-xs text-slate-400">
-                        © {{ new Date().getFullYear() }} Market Sharks. All rights reserved.
-                    </p>
-                    <p class="text-xs text-slate-400">
-                        Powered and designed by
-                        <a
-                            href="https://www.robocoders.dev/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="font-medium text-slate-500 hover:text-indigo-600 transition underline underline-offset-2 decoration-slate-300"
-                        >
-                            Robo Coders
-                        </a>
-                    </p>
-                </div>
+                <p class="text-center text-xs text-slate-400">
+                    © {{ new Date().getFullYear() }} Market Sharks
+                    <span class="mx-1.5 text-slate-300">·</span>
+                    Powered and designed by
+                    <a
+                        href="https://www.robocoders.dev/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="font-medium text-slate-500 hover:text-indigo-600 transition underline underline-offset-2 decoration-slate-300"
+                    >Robo Coders</a>
+                </p>
             </footer>
         </div>
     </div>
+    <ChatWidget />
 </template>

@@ -55,6 +55,7 @@ class MarketStructureController extends Controller
         $this->createTeamNotification($freshStructure);
 
         event(new TeamMarketStructureUpdated($freshStructure));
+        app(\App\Services\LevelAlertService::class)->checkAndNotify();
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -63,7 +64,6 @@ class MarketStructureController extends Controller
             ]);
         }
 
-        app(\App\Services\LevelAlertService::class)->checkAndNotify();
         return back()->with('status', [
             'type' => 'success',
             'title' => 'Success',
