@@ -11,7 +11,7 @@ class ForexNewsService
     private const CACHE_KEY = 'market:news-feed';
     private const CACHE_MINUTES = 15;
 
-    public static function headlines(int $limit = 6): array
+    public function headlines(int $limit = 6): array
     {
         $items = Cache::remember(self::CACHE_KEY, now()->addMinutes(self::CACHE_MINUTES), function () {
             $news = array_merge(self::highImpactEvents(), self::fxstreetHeadlines());
@@ -93,7 +93,7 @@ class ForexNewsService
 
                 $ts = strtotime($e['date'] ?? '') ?: null;
                 if (! $ts || ! now()->isSameDay(\Carbon\Carbon::createFromTimestamp($ts))) {
-                    continue; // today's events only
+                    continue;
                 }
 
                 $out[] = [
@@ -119,7 +119,6 @@ class ForexNewsService
 
         $diff = time() - $ts;
         if ($diff < 0) {
-            // Upcoming calendar event.
             $mins = intdiv(-$diff, 60);
 
             return $mins < 60 ? "in {$mins} min" : 'in '.intdiv($mins, 60).' h';

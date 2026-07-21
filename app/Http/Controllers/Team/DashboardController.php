@@ -13,7 +13,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(): Response
+    public function index(ForexNewsService $forexNewsService): Response
     {
         $signal = TradingSignal::where('status', 'open')->latest('opened_at')->latest('id')->first()
             ?? TradingSignal::latest('opened_at')->latest('id')->first();
@@ -57,7 +57,7 @@ class DashboardController extends Controller
                 ],
                 'updated_at' => $structure?->updated_at?->format('d M Y, h:i A'),
             ],
-            'news' => ForexNewsService::headlines(6),
+            'news' => $forexNewsService->headlines(6),
             'logs' => $logs->map(function ($log) {
                 $resultLabel = match ($log->result) {
                     'profit' => 'Profit',
