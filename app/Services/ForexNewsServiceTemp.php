@@ -11,7 +11,6 @@ class ForexNewsService
     private const CACHE_KEY = 'market:news-feed';
     private const CACHE_MINUTES = 15;
 
-    /** @return array<int, 
     public static function headlines(int $limit = 6): array
     {
         $items = Cache::remember(self::CACHE_KEY, now()->addMinutes(self::CACHE_MINUTES), function () {
