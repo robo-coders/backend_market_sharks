@@ -637,20 +637,20 @@ onBeforeUnmount(() => {
         >
             <div
                 v-if="open"
-                class="notif-panel absolute right-0 z-50 mt-3 w-[26rem] max-w-[92vw] origin-top-right overflow-hidden rounded-[20px] border"
+                class="notif-panel absolute right-0 z-50 mt-3 w-[19rem] max-w-[92vw] origin-top-right overflow-hidden rounded-[20px] border sm:w-[26rem]"
                 style="
                     background: var(--toast-bg);
                     border-color: var(--toast-border);
                     box-shadow: var(--card-shadow-lg);
                 "
             >
-                <div class="flex items-center justify-between px-5 pb-3 pt-5">
-                    <h2 class="text-[15px] font-semibold tracking-tight text-[var(--text-primary)]">Notifications</h2>
+                <div class="flex items-center justify-between px-4 pb-2.5 pt-4 sm:px-5 sm:pb-3 sm:pt-5">
+                    <h2 class="text-[14px] font-semibold tracking-tight text-[var(--text-primary)] sm:text-[15px]">Notifications</h2>
 
                     <button
                         v-if="hasUnread"
                         type="button"
-                        class="notif-focus flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                        class="notif-focus flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] sm:text-[12px]"
                         @click="markAllAsRead"
                     >
                         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -661,11 +661,11 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
-                <div class="flex items-center justify-between border-b border-[var(--border-faint)] px-5 pb-3.5">
+                <div class="flex items-center justify-between border-b border-[var(--border-faint)] px-4 pb-3 sm:px-5 sm:pb-3.5">
                     <div class="inline-flex items-center rounded-full bg-[var(--bg-elevated)] p-[3px]">
                         <button
                             type="button"
-                            class="notif-focus rounded-full px-3.5 py-[5px] text-[12px] font-medium transition-all duration-150"
+                            class="notif-focus rounded-full px-3 py-1 text-[11.5px] font-medium transition-all duration-150 sm:px-3.5 sm:py-[5px] sm:text-[12px]"
                             :class="filter === 'all'
                                 ? 'bg-[var(--bg-elevated-2)] text-[var(--text-primary)] shadow-[0_1px_2px_rgba(0,0,0,0.25)]'
                                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'"
@@ -675,7 +675,7 @@ onBeforeUnmount(() => {
                         </button>
                         <button
                             type="button"
-                            class="notif-focus flex items-center gap-1.5 rounded-full px-3.5 py-[5px] text-[12px] font-medium transition-all duration-150"
+                            class="notif-focus flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium transition-all duration-150 sm:px-3.5 sm:py-[5px] sm:text-[12px]"
                             :class="filter === 'unread'
                                 ? 'bg-[var(--bg-elevated-2)] text-[var(--text-primary)] shadow-[0_1px_2px_rgba(0,0,0,0.25)]'
                                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'"
@@ -694,7 +694,7 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
 
-                    <span v-if="!hasUnread" class="flex items-center gap-1 text-[11.5px] text-[var(--text-tertiary)]">
+                    <span v-if="!hasUnread" class="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] sm:text-[11.5px]">
                         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
@@ -704,7 +704,7 @@ onBeforeUnmount(() => {
 
                 <div
                     ref="listEl"
-                    class="notif-scroll relative max-h-[23rem] overflow-y-auto overscroll-contain"
+                    class="notif-scroll relative max-h-[17rem] overflow-y-auto overscroll-contain sm:max-h-[23rem]"
                     :class="(isOverflowing && !atBottom) && 'is-overflowing'"
                     @scroll="onListScroll"
                     @wheel="onListWheel"
@@ -726,7 +726,7 @@ onBeforeUnmount(() => {
                             v-for="(n, i) in visibleNotifications"
                             :key="n.id"
                             :ref="el => setItemRef(el, i)"
-                            class="notif-item notif-focus relative flex cursor-pointer gap-3 py-3.5 pl-4 pr-5 outline-none transition-colors duration-100"
+                            class="notif-item notif-focus relative flex cursor-pointer gap-2.5 py-2.5 pl-3.5 pr-4 outline-none transition-colors duration-100 sm:gap-3 sm:py-3.5 sm:pl-4 sm:pr-5"
                             :class="!n.read && 'is-unread'"
                             tabindex="0"
                             role="button"
@@ -741,14 +741,14 @@ onBeforeUnmount(() => {
                             />
 
                             <span
-                                class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1"
+                                class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 sm:h-9 sm:w-9"
                                 :style="{
                                     background: TYPE_META[n.iconType].bg,
                                     color: TYPE_META[n.iconType].color,
                                     '--tw-ring-color': TYPE_META[n.iconType].ring,
                                 }"
                             >
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+                                <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
                                     <path :d="TYPE_META[n.iconType].icon" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
                             </span>
@@ -756,7 +756,7 @@ onBeforeUnmount(() => {
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-baseline justify-between gap-2">
                                     <p
-                                        class="truncate text-[13px] leading-tight"
+                                        class="truncate text-[12.5px] leading-tight sm:text-[13px]"
                                         :class="n.read ? 'font-medium text-[var(--text-secondary)]' : 'font-semibold text-[var(--text-primary)]'"
                                     >
                                         {{ n.displayTitle }}
@@ -770,7 +770,7 @@ onBeforeUnmount(() => {
                                         <span class="text-[11px] tabular-nums text-[var(--text-faint)]">{{ formatTime(n.time) }}</span>
                                     </span>
                                 </div>
-                                <p class="mt-1 line-clamp-2 text-[12.5px] leading-[1.45] text-[var(--text-tertiary)]">
+                                <p class="mt-1 line-clamp-2 text-[12px] leading-[1.45] text-[var(--text-tertiary)] sm:text-[12.5px]">
                                     {{ n.displayBody }}
                                 </p>
                             </div>
@@ -793,10 +793,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div v-if="showLoadMoreButton" class="border-t border-[var(--border-faint)] px-5 py-3">
+                <div v-if="showLoadMoreButton" class="border-t border-[var(--border-faint)] px-4 py-2.5 sm:px-5 sm:py-3">
                     <button
                         type="button"
-                        class="notif-focus group flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+                        class="notif-focus group flex w-full items-center justify-center gap-1.5 rounded-xl py-1.5 text-[11.5px] font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:py-2 sm:text-[12px]"
                         :disabled="loadingMore"
                         @click="showPreviousNotifications"
                     >

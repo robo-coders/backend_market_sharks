@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Team\DashboardController as TeamDashboardController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChatAdminController;
+use App\Http\Controllers\TradeLogExportController;
 use App\Models\MarketStructure;
 use App\Models\MarketTrend;
 use App\Models\TradeLog;
@@ -108,7 +109,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
                 'structureUpdateUrl' => route('admin.market-structure.update'),
                 'trendUpdateUrl' => route('admin.market-trend.update'),
                 'livePriceEndpoint' => route('admin.gold-price'),
-                'logsExportUrl' => '',
+                'logsExportUrl' => route('admin.trade-logs.export'),
                 'closeSignalUrl' => ($signal && $signal->status === 'open')
                     ? route('admin.signals.close', $signal->id)
                     : '',
@@ -142,6 +143,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin|admin'])
         Route::post('/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
         Route::get('/gold-price', [GoldPriceController::class, 'show'])->name('admin.gold-price');
+
+        // Trade log CSV export (last 30 days by default, ?days=N to change).
+        Route::get('/trade-logs/export', TradeLogExportController::class)->name('admin.trade-logs.export');
     });
 
 Route::middleware(['auth', 'verified', 'role:team'])
@@ -157,6 +161,9 @@ Route::middleware(['auth', 'verified', 'role:team'])
         Route::get('/notifications', [NotificationController::class, 'index'])->name('team.notifications.index');
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('team.notifications.read-all');
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('team.notifications.read');
+
+        // Trade log CSV export (same controller, team-scoped route name).
+        Route::get('/trade-logs/export', TradeLogExportController::class)->name('team.trade-logs.export');
     });
 
 Route::middleware(['auth', 'verified'])

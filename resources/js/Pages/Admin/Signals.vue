@@ -484,13 +484,13 @@ onBeforeUnmount(() => {
 <template>
     <Head title="Signals" />
 
-    <div class="mx-auto w-full max-w-[1180px] space-y-6">
+    <div class="mx-auto w-full max-w-[1180px] space-y-6 overflow-x-hidden">
         <section class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Trading
                 </p>
-                <h1 class="mt-1.5 text-[28px] font-bold tracking-tight text-slate-900">
+                <h1 class="mt-1.5 text-[24px] font-bold tracking-tight text-slate-900 sm:text-[28px]">
                     Signals
                 </h1>
                 <p class="mt-1 text-sm text-slate-500">
@@ -529,7 +529,7 @@ onBeforeUnmount(() => {
 
                                 <div class="mt-4 flex flex-wrap items-center gap-3">
                                     <h2
-                                        class="text-[42px] font-bold leading-none tracking-tight transition-colors duration-300 sm:text-[48px]"
+                                        class="text-[32px] font-bold leading-none tracking-tight transition-colors duration-300 sm:text-[42px] md:text-[48px]"
                                         :class="sideTextClass"
                                     >
                                         {{ sideLabel }}
@@ -543,7 +543,7 @@ onBeforeUnmount(() => {
 
                             <div class="grid w-full gap-3 sm:w-auto sm:min-w-[236px]">
                                 <div class="flex items-stretch gap-2">
-                                    <div class="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+                                    <div class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
                                         <div class="grid grid-cols-2 gap-1">
                                             <button
                                                 type="button"
@@ -604,13 +604,13 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="space-y-4 p-5 sm:p-6">
-                        <div class="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4">
+                        <div class="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 px-4 py-4 sm:px-5">
                             <div
                                 class="pointer-events-none absolute inset-0 opacity-[0.07]"
                                 style="background-image: radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px); background-size: 22px 22px;"
                             ></div>
 
-                            <div class="relative flex items-center justify-between gap-3">
+                            <div class="relative flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -632,26 +632,26 @@ onBeforeUnmount(() => {
                                         </span>
                                     </div>
                                     <div class="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
-                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                         </svg>
-                                        Read only · synced {{ lastSyncedLabel }}
+                                        <span class="whitespace-nowrap">Read only · synced {{ lastSyncedLabel }}</span>
                                     </div>
                                 </div>
 
                                 <div class="flex items-center gap-3">
-                                    <div v-if="priceLoading" class="h-8 w-32 animate-pulse rounded-lg bg-slate-700/60"></div>
+                                    <div v-if="priceLoading" class="h-7 w-24 animate-pulse rounded-lg bg-slate-700/60 sm:h-8 sm:w-32"></div>
 
                                     <template v-else>
                                         <span
-                                            class="text-[30px] font-bold leading-none tracking-tight tabular-nums transition-colors duration-300"
+                                            class="text-[22px] font-bold leading-none tracking-tight tabular-nums transition-colors duration-300 sm:text-[30px]"
                                             :class="priceDirection === 'up' ? 'text-emerald-400' : priceDirection === 'down' ? 'text-rose-400' : 'text-white'"
                                         >
                                             {{ formattedLivePrice }}
                                         </span>
                                         <svg
                                             v-if="priceDirection !== 'flat'"
-                                            class="h-5 w-5 transition"
+                                            class="h-5 w-5 shrink-0 transition"
                                             :class="priceDirection === 'up' ? 'text-emerald-400' : 'text-rose-400 rotate-180'"
                                             fill="none"
                                             viewBox="0 0 24 24"
@@ -664,7 +664,7 @@ onBeforeUnmount(() => {
 
                                     <button
                                         type="button"
-                                        class="rounded-lg border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white disabled:opacity-50"
+                                        class="shrink-0 rounded-lg border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white disabled:opacity-50"
                                         :disabled="priceLoading"
                                         title="Refresh price"
                                         @click="fetchGoldPrice"
@@ -688,7 +688,7 @@ onBeforeUnmount(() => {
                                 <input
                                     v-model="signal.entry_price"
                                     inputmode="decimal"
-                                    class="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-[26px] font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100"
+                                    class="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-[22px] font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 sm:text-[26px]"
                                 />
                             </label>
 
@@ -702,7 +702,7 @@ onBeforeUnmount(() => {
                                 <input
                                     v-model="signal.take_profit"
                                     inputmode="decimal"
-                                    class="mt-3 h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 text-[26px] font-bold tracking-tight tabular-nums text-emerald-700 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+                                    class="mt-3 h-11 w-full rounded-xl border border-emerald-200 bg-white px-3 text-[22px] font-bold tracking-tight tabular-nums text-emerald-700 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100 sm:text-[26px]"
                                 />
                             </label>
 
@@ -716,17 +716,17 @@ onBeforeUnmount(() => {
                                 <input
                                     v-model="signal.stop_loss"
                                     inputmode="decimal"
-                                    class="mt-3 h-11 w-full rounded-xl border border-rose-200 bg-white px-3 text-[26px] font-bold tracking-tight tabular-nums text-rose-700 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                                    class="mt-3 h-11 w-full rounded-xl border border-rose-200 bg-white px-3 text-[22px] font-bold tracking-tight tabular-nums text-rose-700 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100 sm:text-[26px]"
                                 />
                             </label>
                         </div>
                     </div>
 
                     <div class="mt-auto border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-                        <div class="flex items-center justify-end gap-2">
+                        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                             <button
                                 type="button"
-                                class="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                                class="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                                 :disabled="savingSignal"
                                 @click="resetSignal"
                             >
@@ -734,7 +734,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                                 :disabled="savingSignal"
                                 @click="updateSignal"
                             >
@@ -756,16 +756,16 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div class="space-y-3 p-4 sm:p-5">
+                    <div class="grid grid-cols-2 gap-3 p-4 sm:p-5">
                         <div>
                             <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 Resistance
                             </p>
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-2">
                                 <label
                                     v-for="key in ['resistance_1', 'resistance_2', 'resistance_3']"
                                     :key="key"
-                                    class="cursor-text"
+                                    class="block cursor-text"
                                 >
                                     <span class="mb-1 block text-[11px] font-semibold text-slate-500">
                                         {{ 'R' + key.slice(-1) }}
@@ -773,7 +773,7 @@ onBeforeUnmount(() => {
                                     <input
                                         v-model="structure[key]"
                                         inputmode="decimal"
-                                        class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-lg font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                        class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-base font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:text-lg"
                                         @input="markStructureDirty(key)"
                                     />
                                 </label>
@@ -784,11 +784,11 @@ onBeforeUnmount(() => {
                             <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 Support
                             </p>
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-2">
                                 <label
                                     v-for="key in ['support_1', 'support_2', 'support_3']"
                                     :key="key"
-                                    class="cursor-text"
+                                    class="block cursor-text"
                                 >
                                     <span class="mb-1 block text-[11px] font-semibold text-slate-500">
                                         {{ 'S' + key.slice(-1) }}
@@ -796,7 +796,7 @@ onBeforeUnmount(() => {
                                     <input
                                         v-model="structure[key]"
                                         inputmode="decimal"
-                                        class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-lg font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                        class="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-base font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:text-lg"
                                         @input="markStructureDirty(key)"
                                     />
                                 </label>
@@ -805,10 +805,10 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="mt-auto border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-                        <div class="flex items-center justify-end gap-2">
+                        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                             <button
                                 type="button"
-                                class="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                                class="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                                 :disabled="savingStructure"
                                 @click="resetStructure"
                             >
@@ -816,7 +816,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                                 :disabled="savingStructure"
                                 @click="updateStructure"
                             >
@@ -879,7 +879,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="rounded-[20px] border border-slate-200 bg-slate-50 p-5">
-                        <div class="flex items-start justify-between gap-3">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="text-base font-semibold text-slate-900">
                                     {{ currentTrendLabel }}
@@ -899,10 +899,10 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <div class="mt-5 grid grid-cols-3 gap-2">
+                        <div class="mt-5 grid grid-cols-3 gap-1.5 sm:gap-2">
                             <button
                                 type="button"
-                                class="rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'buy'
                                     ? 'border border-emerald-100 bg-emerald-50 text-emerald-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -912,7 +912,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'neutral'
                                     ? 'border border-amber-100 bg-amber-50 text-amber-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -922,7 +922,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'sell'
                                     ? 'border border-rose-100 bg-rose-50 text-rose-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -934,10 +934,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4 sm:px-6">
+                <div class="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
                     <button
                         type="button"
-                        class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                        class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                         :disabled="savingTrend"
                         @click="resetTrend"
                     >
@@ -945,7 +945,7 @@ onBeforeUnmount(() => {
                     </button>
                     <button
                         type="button"
-                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                         :disabled="savingTrend"
                         @click="updateTrend"
                     >
@@ -999,7 +999,7 @@ onBeforeUnmount(() => {
                         <button
                             type="button"
                             title="Download Excel"
-                            class="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition hover:bg-slate-800 hover:shadow-[0_12px_28px_rgba(15,23,42,0.22)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                            class="inline-flex w-full shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition hover:bg-slate-800 hover:shadow-[0_12px_28px_rgba(15,23,42,0.22)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:w-auto"
                             :disabled="!logsExportUrl"
                             @click="downloadLogs"
                         >
@@ -1029,16 +1029,19 @@ onBeforeUnmount(() => {
                             class="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition"
                             :class="logTone(log.result).ring"
                         >
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" :class="logTone(log.result).badge">
-                                        {{ log.result }}
-                                    </span>
-                                    <span class="text-sm font-semibold text-slate-900">{{ log.signal_type }}</span>
-                                    <span class="text-sm text-slate-400">hit</span>
-                                    <span class="text-sm font-medium text-slate-600">{{ log.hit_level }}</span>
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold" :class="logTone(log.result).badge">
+                                            {{ log.result }}
+                                        </span>
+                                        <span class="text-sm font-semibold text-slate-900">{{ log.signal_type }}</span>
+                                    </div>
+                                    <div class="mt-1 text-sm text-slate-600">
+                                        <span class="text-slate-400">hit</span> <span class="font-medium">{{ log.hit_level }}</span>
+                                    </div>
                                 </div>
-                                <span class="text-[11px] font-medium text-slate-400">{{ log.time }}</span>
+                                <span class="shrink-0 text-[11px] font-medium text-slate-400">{{ log.time }}</span>
                             </div>
                             <div class="mt-2.5 flex items-center gap-1.5 text-sm">
                                 <span class="font-medium text-slate-400">Execution</span>

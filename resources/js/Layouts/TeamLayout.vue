@@ -367,9 +367,21 @@ watch(
                 </div>
             </aside>
 
+            <!--
+                Content shell: padding-left must reserve space for the sidebar
+                ONLY when the sidebar is actually docked in the layout (lg+).
+                Below lg the sidebar is a fixed, off-canvas overlay (see
+                `-translate-x-full` above), so reserving 288px/88px of
+                padding-left there — as an unconditional inline style did
+                before — starved the page content down to a sliver on phones.
+                An inline style can't be gated by Tailwind's `lg:` prefix, so
+                the width is passed through as a CSS variable and the actual
+                padding is applied in the scoped <style> block below a real
+                `min-width: 1024px` media query, matching Tailwind's `lg`.
+            -->
             <div
-                class="flex min-w-0 flex-1 flex-col transition-all duration-300"
-                :style="{ paddingLeft: `min(${sidebarWidth}, 100vw)` }"
+                class="team-content-shell flex min-w-0 flex-1 flex-col transition-all duration-300"
+                :style="{ '--sidebar-width': sidebarWidth }"
             >
                 <header class="sticky top-0 z-30 border-b border-[var(--border-faint)] bg-[var(--bg-header)] backdrop-blur-2xl">
                     <div class="flex h-[72px] items-center gap-3 px-4 sm:px-6 lg:px-8">
@@ -413,8 +425,8 @@ watch(
 
                             <NotificationBell />
 
-                            <div class="inline-flex items-center gap-2 rounded-full bg-[var(--success-soft)] px-3 py-2 text-[12px] font-medium text-[var(--success)]">
-                                <span class="h-2 w-2 rounded-full bg-[var(--success)] animate-pulse"></span>
+                            <div class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--success-soft)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--success)] sm:gap-2 sm:px-3 sm:py-2 sm:text-[12px]">
+                                <span class="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse sm:h-2 sm:w-2"></span>
                                 Live session
                             </div>
                         </div>
@@ -445,3 +457,15 @@ watch(
         <ChatWidget />
     </div>
 </template>
+
+<style scoped>
+.team-content-shell {
+    padding-left: 0;
+}
+
+@media (min-width: 1024px) {
+    .team-content-shell {
+        padding-left: min(var(--sidebar-width), 100vw);
+    }
+}
+</style>

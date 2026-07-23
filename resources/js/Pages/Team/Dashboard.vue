@@ -721,7 +721,7 @@ onBeforeUnmount(() => {
     <Head title="Team Dashboard" />
 
     <TeamLayout>
-        <div class="space-y-4">
+        <div class="space-y-4 overflow-x-hidden">
             <section class="grid items-start grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.68fr)_290px]">
                 <div class="rounded-[24px] bg-[var(--card-bg)] p-3.5 shadow-[var(--card-shadow-sm)] ring-1 ring-[var(--card-ring)]">
                     <div class="flex items-center justify-between gap-3">
@@ -730,7 +730,7 @@ onBeforeUnmount(() => {
                             <p class="mt-0.5 text-[12px] leading-[1.15] text-[var(--text-tertiary)]">Context for fast decisions</p>
                         </div>
 
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--info-soft)] px-2 py-1 text-[10px] font-medium leading-none text-[var(--info-text)]">
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--info-soft)] px-2 py-1 text-[10px] font-medium leading-none text-[var(--info-text)]">
                             <span class="h-1.5 w-1.5 rounded-full bg-[var(--info-dot)]"></span>
                             Feed
                         </span>
@@ -743,10 +743,10 @@ onBeforeUnmount(() => {
                             class="rounded-[16px] bg-[var(--news-bg)] px-3.5 py-2.5 transition hover:bg-[var(--bg-hover)]"
                         >
                             <div class="flex items-start gap-2.5">
-                                <span class="mt-1 h-2 w-2 rounded-full bg-[var(--info-dot)]"></span>
+                                <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-[var(--info-dot)]"></span>
                                 <div class="min-w-0">
                                     <p class="text-[13px] leading-[1.35] text-[var(--text-primary)]">{{ item.title }}</p>
-                                    <div class="mt-1 flex items-center gap-1.5 text-[10px] leading-none text-[var(--text-tertiary)]">
+                                    <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] leading-none text-[var(--text-tertiary)]">
                                         <span>{{ item.source }}</span>
                                         <span>•</span>
                                         <span>{{ item.time }}</span>
@@ -767,7 +767,7 @@ onBeforeUnmount(() => {
                             </p>
                         </div>
 
-                        <div class="mt-4 flex items-center justify-between gap-2">
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
                             <span class="text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--text-tertiary)]">{{ liveMarket.symbol }}</span>
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--chip-bg)] px-2 py-1 text-[10px] font-medium tabular-nums text-[var(--text-tertiary)]">
                                 <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)] shadow-[0_0_6px_rgba(61,220,151,0.6)]"></span>
@@ -801,7 +801,7 @@ onBeforeUnmount(() => {
                                 </div>
 
                                 <div class="mt-5 flex flex-wrap items-end gap-3">
-                                    <h2 class="text-[44px] sm:text-[56px] lg:text-[64px] font-semibold leading-[0.92] tracking-[-0.065em] text-[var(--text-primary)]">
+                                    <h2 class="text-[36px] sm:text-[44px] md:text-[56px] lg:text-[64px] font-semibold leading-[0.92] tracking-[-0.065em] text-[var(--text-primary)]">
                                         {{ liveSignal.type }}
                                     </h2>
 
@@ -855,46 +855,46 @@ onBeforeUnmount(() => {
                             class="mt-8 sm:mt-12 grid auto-rows-fr grid-cols-1 gap-3 md:grid-cols-3 transition-opacity duration-300"
                             :class="!hasActiveSignal && 'opacity-60'"
                         >
-                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-entry-ring)] [background-image:var(--panel-entry-bg)] px-5 py-5 shadow-[var(--panel-shadow)]">
-                                <div class="flex min-h-[42px] items-start justify-between gap-3">
+                            <div class="flex min-h-[92px] sm:min-h-[130px] md:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-entry-ring)] [background-image:var(--panel-entry-bg)] px-4 py-3.5 shadow-[var(--panel-shadow)] sm:px-5 sm:py-5">
+                                <div class="flex min-h-[26px] items-start justify-between gap-3 sm:min-h-[42px]">
                                     <div>
                                         <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Entry</p>
                                         <p class="mt-1 text-[11px] font-medium text-[var(--info-text)]">Execution</p>
                                     </div>
                                 </div>
 
-                                <div class="flex flex-1 items-end pt-6">
-                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--text-primary)] tabular-nums">
+                                <div class="flex flex-1 items-end pt-2 sm:pt-6">
+                                    <p class="text-[24px] sm:text-[26px] md:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--text-primary)] tabular-nums">
                                         {{ liveSignal.entry_price }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-tp-ring)] [background-image:var(--panel-tp-bg)] px-5 py-5 shadow-[var(--panel-shadow)]">
-                                <div class="flex min-h-[42px] items-start justify-between gap-3">
+                            <div class="flex min-h-[92px] sm:min-h-[130px] md:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-tp-ring)] [background-image:var(--panel-tp-bg)] px-4 py-3.5 shadow-[var(--panel-shadow)] sm:px-5 sm:py-5">
+                                <div class="flex min-h-[26px] items-start justify-between gap-3 sm:min-h-[42px]">
                                     <div>
                                         <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--success-text)] opacity-70">Take profit</p>
                                         <p class="mt-1 text-[11px] font-medium text-[var(--success-text)]">Reward</p>
                                     </div>
                                 </div>
 
-                                <div class="flex flex-1 items-end pt-6">
-                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--success-text)] tabular-nums">
+                                <div class="flex flex-1 items-end pt-2 sm:pt-6">
+                                    <p class="text-[24px] sm:text-[26px] md:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--success-text)] tabular-nums">
                                         {{ liveSignal.take_profit }}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="flex min-h-[180px] sm:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-sl-ring)] [background-image:var(--panel-sl-bg)] px-5 py-5 shadow-[var(--panel-shadow)]">
-                                <div class="flex min-h-[42px] items-start justify-between gap-3">
+                            <div class="flex min-h-[92px] sm:min-h-[130px] md:min-h-[220px] h-full flex-col justify-between rounded-[24px] border border-[var(--panel-sl-ring)] [background-image:var(--panel-sl-bg)] px-4 py-3.5 shadow-[var(--panel-shadow)] sm:px-5 sm:py-5">
+                                <div class="flex min-h-[26px] items-start justify-between gap-3 sm:min-h-[42px]">
                                     <div>
                                         <p class="text-[10px] uppercase tracking-[0.24em] text-[var(--danger-text)] opacity-70">Stop loss</p>
                                         <p class="mt-1 text-[11px] font-medium text-[var(--danger-text)]">Risk</p>
                                     </div>
                                 </div>
 
-                                <div class="flex flex-1 items-end pt-6">
-                                    <p class="text-[26px] sm:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--danger-text)] tabular-nums">
+                                <div class="flex flex-1 items-end pt-2 sm:pt-6">
+                                    <p class="text-[24px] sm:text-[26px] md:text-[32px] font-semibold leading-none tracking-[-0.05em] text-[var(--danger-text)] tabular-nums">
                                         {{ liveSignal.stop_loss }}
                                     </p>
                                 </div>
@@ -905,24 +905,24 @@ onBeforeUnmount(() => {
 
                 <div class="grid grid-cols-1 gap-3">
                     <div class="rounded-[28px] bg-[var(--card-bg)] p-4 shadow-[var(--card-shadow)] ring-1 ring-[var(--card-ring)]">
-                        <div class="flex items-start justify-between gap-3">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
                             <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Market structure</p>
-                            <div class="rounded-[16px] bg-[var(--inset-bg)] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div class="max-w-full rounded-[16px] bg-[var(--inset-bg)] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                                 <p class="text-[9px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Updated</p>
-                                <p class="mt-1 text-[11px] font-medium leading-4 text-[var(--text-secondary)] whitespace-nowrap">{{ formatUpdatedAt(liveStructureUpdatedAt) }}</p>
+                                <p class="mt-1 text-[11px] font-medium leading-4 text-[var(--text-secondary)]">{{ formatUpdatedAt(liveStructureUpdatedAt) }}</p>
                             </div>
                         </div>
 
-                        <div class="mt-3 grid grid-cols-2 gap-3">
+                        <div class="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
                             <div class="space-y-2.5">
                                 <p class="text-[11px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Support</p>
                                 <div
                                     v-for="(level, index) in liveLevels.supports"
                                     :key="`sup-${index}`"
-                                    class="flex items-center justify-between rounded-2xl bg-[var(--success-softer)] px-4 py-3"
+                                    class="flex items-center justify-between gap-2 rounded-2xl bg-[var(--success-softer)] px-3 py-3 sm:px-4"
                                 >
                                     <span class="text-sm text-[var(--text-tertiary)]">S{{ index + 1 }}</span>
-                                    <span class="text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
+                                    <span class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
                                 </div>
                             </div>
 
@@ -931,34 +931,34 @@ onBeforeUnmount(() => {
                                 <div
                                     v-for="(level, index) in liveLevels.resistances"
                                     :key="`res-${index}`"
-                                    class="flex items-center justify-between rounded-2xl bg-[var(--danger-softer)] px-4 py-3"
+                                    class="flex items-center justify-between gap-2 rounded-2xl bg-[var(--danger-softer)] px-3 py-3 sm:px-4"
                                 >
                                     <span class="text-sm text-[var(--text-tertiary)]">R{{ index + 1 }}</span>
-                                    <span class="text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
+                                    <span class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="rounded-[28px] bg-[var(--card-bg)] p-4 shadow-[var(--card-shadow)] ring-1 ring-[var(--card-ring)]">
-                        <div class="flex items-start justify-between gap-3">
+                        <div class="flex flex-wrap items-start justify-between gap-2">
                             <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--text-faint)]">Market Trend</p>
-                            <div class="rounded-[16px] bg-[var(--inset-bg)] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            <div class="max-w-full rounded-[16px] bg-[var(--inset-bg)] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                                 <p class="text-[9px] uppercase tracking-[0.2em] text-[var(--text-faint)]">Updated</p>
-                                <p class="mt-1 text-[11px] font-medium leading-4 text-[var(--text-secondary)] whitespace-nowrap">{{ formatUpdatedAt(liveTrendUpdatedAt) }}</p>
+                                <p class="mt-1 text-[11px] font-medium leading-4 text-[var(--text-secondary)]">{{ formatUpdatedAt(liveTrendUpdatedAt) }}</p>
                             </div>
                         </div>
 
-                        <div class="mt-3 grid grid-cols-2 gap-3">
-                            <div class="rounded-[22px] bg-[var(--bg-elevated)] px-4 py-3 ring-1 ring-[var(--border-faint)]">
-                                <div class="flex items-center justify-between">
+                        <div class="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+                            <div class="rounded-[22px] bg-[var(--bg-elevated)] px-3 py-3 ring-1 ring-[var(--border-faint)] sm:px-4">
+                                <div class="flex items-center justify-between gap-2">
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Gold</p>
-                                    <span class="h-2.5 w-2.5 rounded-full" :class="trendDot(liveTrend.gold)"></span>
+                                    <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="trendDot(liveTrend.gold)"></span>
                                 </div>
 
                                 <div class="mt-4">
                                     <span
-                                        class="inline-flex min-w-[88px] justify-center rounded-full px-3 py-1.5 text-sm font-semibold tracking-[0.02em]"
+                                        class="inline-flex w-full justify-center rounded-full px-2 py-1.5 text-[13px] sm:text-sm font-semibold tracking-[0.02em] sm:min-w-[88px] sm:w-auto"
                                         :class="trendTone(liveTrend.gold)"
                                     >
                                         {{ liveTrend.gold }}
@@ -966,15 +966,15 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <div class="rounded-[22px] bg-[var(--bg-elevated)] px-4 py-3 ring-1 ring-[var(--border-faint)]">
-                                <div class="flex items-center justify-between">
+                            <div class="rounded-[22px] bg-[var(--bg-elevated)] px-3 py-3 ring-1 ring-[var(--border-faint)] sm:px-4">
+                                <div class="flex items-center justify-between gap-2">
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Dollar</p>
-                                    <span class="h-2.5 w-2.5 rounded-full" :class="trendDot(liveTrend.dollar)"></span>
+                                    <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="trendDot(liveTrend.dollar)"></span>
                                 </div>
 
                                 <div class="mt-4">
                                     <span
-                                        class="inline-flex min-w-[88px] justify-center rounded-full px-3 py-1.5 text-sm font-semibold tracking-[0.02em]"
+                                        class="inline-flex w-full justify-center rounded-full px-2 py-1.5 text-[13px] sm:text-sm font-semibold tracking-[0.02em] sm:min-w-[88px] sm:w-auto"
                                         :class="trendTone(liveTrend.dollar)"
                                     >
                                         {{ liveTrend.dollar }}

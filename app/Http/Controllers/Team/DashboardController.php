@@ -13,7 +13,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(ForexNewsService $forexNewsService): Response
+    public function index(): Response
     {
         $signal = TradingSignal::where('status', 'open')->latest('opened_at')->latest('id')->first()
             ?? TradingSignal::latest('opened_at')->latest('id')->first();
@@ -45,6 +45,10 @@ class DashboardController extends Controller
                 'updated_at' => $signal?->opened_at?->format('d M Y, h:i A') ?? now()->format('d M Y, h:i A'),
             ],
             'levels' => [
+                // Positions preserved (nulls included) rather than
+                // filtered out — filtering + reindexing was shifting
+                // later levels into earlier slots and mislabeling them
+                // (e.g. support_3's value showing under "S2").
                 'supports' => [
                     $structure?->support_1,
                     $structure?->support_2,
@@ -57,7 +61,13 @@ class DashboardController extends Controller
                 ],
                 'updated_at' => $structure?->updated_at?->format('d M Y, h:i A'),
             ],
-            'news' => $forexNewsService->headlines(6),
+            // Live market news: FXStreet headlines + today's high-impact
+            // economic-calendar events, cached 15 min in ForexNewsService.
+            // Falls back to an empty list if the feeds are unreachable, so
+            // the card never breaks.
+            'news' => ForexNewsService::headlines(6),
+            // Enables the Export button on the Market Logs card.
+            'logsExportUrl' => route('team.trade-logs.export'),
             'logs' => $logs->map(function ($log) {
                 $resultLabel = match ($log->result) {
                     'profit' => 'Profit',
