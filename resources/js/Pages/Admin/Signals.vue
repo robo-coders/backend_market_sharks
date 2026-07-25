@@ -112,6 +112,7 @@ const initialStructure = {
 const initialTrend = {
     gold: props.trend?.gold_trend ?? props.trend?.gold ?? 'buy',
     dollar: props.trend?.dollar_trend ?? props.trend?.dollar ?? 'neutral',
+    updated_at: props.trend?.updated_at ?? null,
 }
 
 const signal = reactive({ ...initialSignal })
@@ -178,6 +179,7 @@ const feedStatus = computed(() => {
 })
 
 const signalUpdatedAtParts = computed(() => formatDubaiDateTimeParts(signal.updated_at))
+const trendUpdatedAtParts = computed(() => formatDubaiDateTimeParts(trend.updated_at))
 
 const fetchGoldPrice = async () => {
     priceError.value = false
@@ -364,6 +366,10 @@ const updateTrend = async () => {
         if (data?.data) {
             trend.gold = data.data.gold_trend ?? trend.gold
             trend.dollar = data.data.dollar_trend ?? trend.dollar
+            // Keep the trend card's "Last Updated" in sync after a save.
+            trend.updated_at = data.data.updated_at ?? new Date().toISOString()
+        } else {
+            trend.updated_at = new Date().toISOString()
         }
 
         notifyToast.fire({
@@ -610,10 +616,10 @@ onBeforeUnmount(() => {
                                 style="background-image: radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px); background-size: 22px 22px;"
                             ></div>
 
-                            <div class="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="relative flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <p class="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                             Gold live price
                                         </p>
                                         <span
@@ -894,7 +900,7 @@ onBeforeUnmount(() => {
                                     Last Updated
                                 </p>
                                 <p class="mt-1 text-xs font-medium text-slate-500">
-                                    {{ trend.updated_at }}
+                                    {{ trendUpdatedAtParts.absolute }}
                                 </p>
                             </div>
                         </div>
@@ -902,7 +908,7 @@ onBeforeUnmount(() => {
                         <div class="mt-5 grid grid-cols-3 gap-1.5 sm:gap-2">
                             <button
                                 type="button"
-                                class="w-full break-words rounded-xl px-1 py-1.5 text-center text-[10.5px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
+                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'buy'
                                     ? 'border border-emerald-100 bg-emerald-50 text-emerald-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -912,7 +918,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="w-full break-words rounded-xl px-1 py-1.5 text-center text-[10.5px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
+                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'neutral'
                                     ? 'border border-amber-100 bg-amber-50 text-amber-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -922,7 +928,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="w-full break-words rounded-xl px-1 py-1.5 text-center text-[10.5px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
+                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'sell'
                                     ? 'border border-rose-100 bg-rose-50 text-rose-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -998,7 +1004,7 @@ onBeforeUnmount(() => {
 
                         <button
                             type="button"
-                            title="Download Excel"
+                            title="Download CSV"
                             class="inline-flex w-full shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition hover:bg-slate-800 hover:shadow-[0_12px_28px_rgba(15,23,42,0.22)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:w-auto"
                             :disabled="!logsExportUrl"
                             @click="downloadLogs"
