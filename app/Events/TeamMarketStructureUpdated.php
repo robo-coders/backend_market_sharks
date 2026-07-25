@@ -13,8 +13,14 @@ class TeamMarketStructureUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /**
+     * @param  array<int, string>  $changed  Keys the admin actually changed,
+     *                                        e.g. ['support_2']. Empty = unknown
+     *                                        (frontend falls back to all set levels).
+     */
     public function __construct(
-        public MarketStructure $structure
+        public MarketStructure $structure,
+        public array $changed = [],
     ) {
     }
 
@@ -45,6 +51,9 @@ class TeamMarketStructureUpdated implements ShouldBroadcastNow
                 'resistance_3' => $this->structure->resistance_3,
                 'updated_at' => optional($this->structure->updated_at)?->format('d M Y, h:i A'),
             ],
+            // Only the fields that changed this update — the toast renders
+            // just these instead of every level that happens to be set.
+            'changed' => array_values($this->changed),
         ];
     }
 }

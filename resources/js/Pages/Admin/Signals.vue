@@ -610,10 +610,10 @@ onBeforeUnmount(() => {
                                 style="background-image: radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px); background-size: 22px 22px;"
                             ></div>
 
-                            <div class="relative flex flex-wrap items-center justify-between gap-3">
+                            <div class="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                        <p class="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                             Gold live price
                                         </p>
                                         <span
@@ -902,7 +902,7 @@ onBeforeUnmount(() => {
                         <div class="mt-5 grid grid-cols-3 gap-1.5 sm:gap-2">
                             <button
                                 type="button"
-                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
+                                class="w-full break-words rounded-xl px-1 py-1.5 text-center text-[10.5px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'buy'
                                     ? 'border border-emerald-100 bg-emerald-50 text-emerald-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -912,7 +912,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
+                                class="w-full break-words rounded-xl px-1 py-1.5 text-center text-[10.5px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'neutral'
                                     ? 'border border-amber-100 bg-amber-50 text-amber-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
@@ -922,7 +922,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="w-full break-words rounded-xl px-1.5 py-2 text-center text-[12px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
+                                class="w-full break-words rounded-xl px-1 py-1.5 text-center text-[10.5px] font-semibold leading-tight transition sm:whitespace-nowrap sm:px-3 sm:py-2.5 sm:text-sm"
                                 :class="currentTrendValue === 'sell'
                                     ? 'border border-rose-100 bg-rose-50 text-rose-700'
                                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"

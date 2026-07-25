@@ -45,8 +45,18 @@ class MarketStructureController extends Controller
             ]
         );
 
+        // The admin page sends every level, but only the ones the admin
+        // actually touched carry a real number — untouched fields arrive
+        // as null. Strip the nulls so we merge onto the existing DB
+        // values instead of overwriting the other 5 with null.
+        // (Reset-to-zero still works: it sends 0, not null.)
+        $changed = array_filter(
+            $validated,
+            fn ($value) => $value !== null
+        );
+
         $marketStructure->update([
-            ...$validated,
+            ...$changed,
             'updated_by' => auth()->id(),
         ]);
 
@@ -54,7 +64,10 @@ class MarketStructureController extends Controller
 
         $this->createTeamNotification($freshStructure);
 
-        event(new TeamMarketStructureUpdated($freshStructure));
+        // Pass the keys that actually changed so the team dashboard toast
+        // shows only those (e.g. just "S2"), while the full structure
+        // still updates every slot on the panel.
+        event(new TeamMarketStructureUpdated($freshStructure, array_keys($changed)));
         app(\App\Services\LevelAlertService::class)->checkAndNotify();
 
         if ($request->expectsJson()) {

@@ -5,9 +5,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <link rel="stylesheet" href="{{ asset('admin/assets/vendor/css/core.css') }}" class="template-customizer-core-css" />
-        <link rel="stylesheet" href="{{ asset('admin/assets/vendor/fonts/boxicons.css') }}" />
-        <link rel="stylesheet" href="{{ asset('admin/assets/vendor/css/theme-default.css') }}" class="template-customizer-theme-css" />
+        {{-- Temporarily disabled for mobile-responsiveness testing — this is the
+             legacy Bootstrap admin theme (core.css/theme-default.css/boxicons.css).
+             None of the Vue/Inertia pages (AdminLayout, TeamLayout, Dashboard,
+             signals) use any Bootstrap classes; this theme's CSS may be forcing
+             a min-width/layout on html/body that only shows up on real mobile
+             Safari, not in Chrome DevTools' device simulator. If the mobile
+             layout renders correctly with these disabled, that confirms the
+             cause and these lines can be removed for good instead of
+             re-enabled. --}}
+        {{-- <link rel="stylesheet" href="{{ asset('admin/assets/vendor/css/core.css') }}" class="template-customizer-core-css" /> --}}
+        {{-- <link rel="stylesheet" href="{{ asset('admin/assets/vendor/fonts/boxicons.css') }}" /> --}}
+        {{-- <link rel="stylesheet" href="{{ asset('admin/assets/vendor/css/theme-default.css') }}" class="template-customizer-theme-css" /> --}}
         <link rel="icon" type="image/png" href="{{ asset('admin/assets/img/favicon/favicon.png') }}">
         
 
@@ -27,12 +36,16 @@
     <body class="font-sans antialiased">
         @inertia
 
-        <script src="/admin/assets/vendor/libs/jquery/jquery.js"></script>
-        <script src="/admin/assets/vendor/libs/popper/popper.js"></script>
-        <script src="/admin/assets/vendor/js/bootstrap.js"></script>
-        <script src="/admin/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
-        <script src="/admin/assets/vendor/js/menu.js"></script>
-        <script src="/admin/assets/js/main.js"></script>
+        {{-- Same legacy admin theme's JS — jQuery/Popper/Bootstrap/menu.js/main.js.
+             Disabled alongside the CSS above for the same test. Nothing in the
+             Vue pages calls into jQuery/Bootstrap, so this should be safe to
+             leave off if the layout test confirms the theory. --}}
+        {{-- <script src="/admin/assets/vendor/libs/jquery/jquery.js"></script> --}}
+        {{-- <script src="/admin/assets/vendor/libs/popper/popper.js"></script> --}}
+        {{-- <script src="/admin/assets/vendor/js/bootstrap.js"></script> --}}
+        {{-- <script src="/admin/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script> --}}
+        {{-- <script src="/admin/assets/vendor/js/menu.js"></script> --}}
+        {{-- <script src="/admin/assets/js/main.js"></script> --}}
 
 
     </body>

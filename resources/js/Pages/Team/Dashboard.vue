@@ -31,6 +31,23 @@ const mapTrendPayload = trend => ({
     updated_at: trend?.updated_at ?? null,
 })
 
+// Single source of truth for a closed-trade outcome. Both the toast and the
+// log row derive their label from the numeric profit_loss, so they can never
+// disagree with each other or with the backend/notification. `result` is only
+// a fallback if profit_loss is missing. A small epsilon treats sub-cent moves
+// as breakeven. Returns 'Profit' | 'Loss' | 'Breakeven'.
+const outcomeFromPl = (profitLoss, fallbackResult = null) => {
+    const pl = Number(profitLoss)
+    if (!Number.isFinite(pl)) {
+        if (fallbackResult === 'profit') return 'Profit'
+        if (fallbackResult === 'loss') return 'Loss'
+        return 'Breakeven'
+    }
+    if (pl > 0.001) return 'Profit'
+    if (pl < -0.001) return 'Loss'
+    return 'Breakeven'
+}
+
 const liveTrend = ref(mapTrendPayload(props.trend))
 const liveSignal = ref({ ...props.signal })
 const liveLevels = ref({
@@ -76,13 +93,6 @@ const formatPrice = value =>
         maximumFractionDigits: 2,
     })
 
-// --- Support/Resistance proximity alerts -------------------------------
-// Fires a toast + beep + browser notification when the live price comes
-// within LEVEL_ALERT_MARGIN dollars of any support or resistance level
-// (an exact match is also within the margin). Alerts fire only when the
-// price ENTERS the range for a given level — not on every poll while it
-// stays there — and re-arm once the price leaves the range or the level
-// value changes.
 const LEVEL_ALERT_MARGIN = 1
 
 let activeLevelAlerts = new Set()
@@ -154,7 +164,6 @@ const triggerLevelAlert = async (price, entries) => {
     sendLevelNotification(price, detail)
     await playBeep('Level')
 }
-// -----------------------------------------------------------------------
 
 const fetchLivePrice = async () => {
     if (!props.livePriceEndpoint) return
@@ -258,10 +267,6 @@ const formatUpdatedAt = value => {
     return value
 }
 
-// Renders a structure level as a dash when it hasn't been set (null),
-// instead of dropping it from the array — which would shift every
-// subsequent level up a slot and mislabel it (e.g. S3's value showing
-// under the "S2" label).
 const formatLevel = value => {
     if (value === null || value === undefined || value === '') return '—'
     return value
@@ -397,7 +402,6 @@ const playTone = (startTime, frequency, { peak = 0.6, duration = 0.24 } = {}) =>
 }
 
 const playBeep = async (type = 'Buy') => {
-    // Respect the persisted per-user preference (Team Settings → Alert sounds).
     if (usePage().props.auth?.user?.alert_sounds_muted) return
 
     try {
@@ -481,20 +485,26 @@ const showSignalToast = type => {
     startToastTimer(TOAST_DURATION_MS)
 }
 
-const showStructureToast = structure => {
+const STRUCTURE_LEVEL_ORDER = ['support_1', 'support_2', 'support_3', 'resistance_1', 'resistance_2', 'resistance_3']
+const STRUCTURE_LEVEL_LABELS = {
+    support_1: 'S1',
+    support_2: 'S2',
+    support_3: 'S3',
+    resistance_1: 'R1',
+    resistance_2: 'R2',
+    resistance_3: 'R3',
+}
+
+const showStructureToast = (structure, changedKeys = null) => {
     resetToast()
 
-    // Show whichever levels are actually set (up to 3), instead of a
-    // hard-coded "S1 · R1" that renders as dashes when other slots were
-    // the ones updated.
-    const setLevels = [
-        ['S1', structure?.support_1],
-        ['S2', structure?.support_2],
-        ['S3', structure?.support_3],
-        ['R1', structure?.resistance_1],
-        ['R2', structure?.resistance_2],
-        ['R3', structure?.resistance_3],
-    ].filter(([, value]) => value !== null && value !== undefined && value !== '')
+    const keys = Array.isArray(changedKeys) && changedKeys.length
+        ? STRUCTURE_LEVEL_ORDER.filter(key => changedKeys.includes(key))
+        : STRUCTURE_LEVEL_ORDER
+
+    const setLevels = keys
+        .map(key => [STRUCTURE_LEVEL_LABELS[key], structure?.[key]])
+        .filter(([label, value]) => label && value !== null && value !== undefined && value !== '')
 
     const detail = setLevels.length
         ? setLevels.slice(0, 3).map(([label, value]) => `${label} ${value}`).join(' · ')
@@ -548,16 +558,22 @@ const showLevelToast = (price, detail) => {
 const showClosedToast = tradeLog => {
     resetToast()
 
-    const isProfit = tradeLog.result === 'profit'
-    const sign = Number(tradeLog.profit_loss) >= 0 ? '+' : ''
+    // Label + sign both derive from the same numeric profit_loss, so the
+    // toast can never disagree with the log row or the server notification.
+    const label = outcomeFromPl(tradeLog.profit_loss, tradeLog.result)
+    const pl = Number(tradeLog.profit_loss)
+    const hasPl = Number.isFinite(pl)
+    const plText = hasPl ? `${pl >= 0 ? '+' : ''}${pl.toFixed(2)}` : ''
+    const reason = tradeLog.close_reason ? tradeLog.close_reason.toUpperCase() : ''
+    const detail = [plText, reason].filter(Boolean).join(' · ')
 
     toast.value = {
         visible: true,
         kind: 'closed',
-        type: isProfit ? 'Profit' : (tradeLog.result === 'loss' ? 'Loss' : 'Breakeven'),
-        title: isProfit ? 'Trade closed — Profit' : (tradeLog.result === 'loss' ? 'Trade closed — Loss' : 'Trade closed — Breakeven'),
+        type: label,
+        title: `Trade closed — ${label}`,
         symbol: tradeLog.symbol ?? liveMarket.symbol,
-        detail: `${sign}${Number(tradeLog.profit_loss).toFixed(2)} · ${tradeLog.close_reason?.toUpperCase() ?? ''}`,
+        detail,
         seq: toastSeq,
     }
 
@@ -573,9 +589,6 @@ onMounted(() => {
     unlockHandler = () => {
         unlockAudio()
 
-        // Ask for browser notification permission on the same first
-        // user gesture that unlocks audio, so level alerts can also
-        // fire system notifications.
         try {
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission().catch(() => {})
@@ -598,7 +611,9 @@ onMounted(() => {
 
             if (event.signal.status_raw === 'closed' && event.trade_log) {
                 liveLogs.value.unshift({
-                    result: event.trade_log.result === 'profit' ? 'Profit' : (event.trade_log.result === 'loss' ? 'Loss' : 'Breakeven'),
+                    // Same numeric-derived outcome as the toast, so the log
+                    // row and the toast always agree.
+                    result: outcomeFromPl(event.trade_log.profit_loss, event.trade_log.result),
                     signal_type: event.signal.signal_type === 'buy' ? 'Buy' : 'Sell',
                     hit_level: event.trade_log.close_reason === 'tp' ? 'Take Profit' : (event.trade_log.close_reason === 'sl' ? 'Stop Loss' : 'Manual Close'),
                     price: event.trade_log.close_price,
@@ -608,7 +623,7 @@ onMounted(() => {
                 hasActiveSignal.value = false
 
                 showClosedToast(event.trade_log)
-                await playBeep(event.trade_log.result === 'loss' ? 'Loss' : 'Profit')
+                await playBeep(outcomeFromPl(event.trade_log.profit_loss, event.trade_log.result) === 'Loss' ? 'Loss' : 'Profit')
                 return
             }
 
@@ -625,10 +640,6 @@ onMounted(() => {
         })
         .listen('.market-structure.updated', async event => {
             if (event?.structure) {
-                // Positions are preserved even when a value is null — this
-                // is what keeps S1/S2/S3 and R1/R2/R3 correctly labeled.
-                // Filtering nulls out here would shift later values into
-                // earlier slots and mislabel them.
                 liveLevels.value = {
                     supports: [
                         event.structure.support_1,
@@ -644,12 +655,9 @@ onMounted(() => {
 
                 liveStructureUpdatedAt.value = event.structure.updated_at || null
 
-                showStructureToast(event.structure)
+                showStructureToast(event.structure, event.changed)
                 await playBeep('Structure')
 
-                // New levels may already be within the alert margin of the
-                // current price — check immediately instead of waiting for
-                // the next price poll.
                 checkLevelProximity(previousPrice.value)
             }
         })
@@ -673,9 +681,6 @@ onMounted(() => {
         .listen('.level.alert', async event => {
             if (!event?.levels?.length) return
 
-            // Server-side levels:monitor detected a level hit. Skip any
-            // level the local 5-second poll already alerted on, and
-            // register the rest so the local poll won't double-alert.
             const fresh = event.levels.filter(level => {
                 const key = `${level.label}:${Number(level.value)}`
                 if (activeLevelAlerts.has(key)) return false
@@ -791,7 +796,6 @@ onBeforeUnmount(() => {
 
                     <div class="relative">
                         <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
-                            <!-- Active state: headline + symbol pill -->
                             <div v-if="hasActiveSignal" class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2.5">
                                     <span class="inline-flex items-center gap-2 rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] ring-1 ring-[var(--card-ring)] backdrop-blur-sm">
@@ -821,10 +825,6 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <!-- Empty state: pill top-left, then a full-width centered
-                                 block below, spanning both grid columns so it's
-                                 centered on the whole card, not squeezed into the
-                                 left column next to a phantom right box. -->
                             <div v-if="!hasActiveSignal" class="col-span-full">
                                 <div class="flex flex-wrap items-center gap-2.5">
                                     <span class="inline-flex items-center gap-2 rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] ring-1 ring-[var(--card-ring)] backdrop-blur-sm">
@@ -1005,7 +1005,7 @@ onBeforeUnmount(() => {
 
                         <button
                             type="button"
-                            title="Download as Excel"
+                            title="Download CSV"
                             class="inline-flex items-center gap-2 rounded-xl bg-[var(--bg-elevated-2)] px-3.5 py-2 text-[12px] font-semibold text-[var(--text-primary)] shadow-[var(--card-shadow-sm)] transition hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                             :disabled="!logsExportUrl"
                             @click="downloadLogs"
