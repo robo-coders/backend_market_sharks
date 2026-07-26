@@ -98,9 +98,7 @@ class TradingSignalController extends Controller
             'stop_loss' => ['sometimes', 'numeric'],
             'take_profit' => ['sometimes', 'numeric'],
             'gold_price_at_entry' => ['nullable', 'numeric'],
-            'status' => ['sometimes', 'in:open,closed'],
             'opened_at' => ['sometimes', 'date'],
-            'closed_at' => ['nullable', 'date'],
         ]);
 
         $signal->update($validated);

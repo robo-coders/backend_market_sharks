@@ -2,11 +2,12 @@
 namespace App\Mail;
 
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class SubscriptionExpired extends Mailable
+class SubscriptionExpired extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

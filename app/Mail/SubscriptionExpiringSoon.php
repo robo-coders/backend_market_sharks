@@ -1,13 +1,14 @@
 <?php
 namespace App\Mail;
 
-use App\Models\Subscription;
 use App\Models\User;
+use App\Models\Subscription;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class SubscriptionExpiringSoon extends Mailable
+class SubscriptionExpiringSoon extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

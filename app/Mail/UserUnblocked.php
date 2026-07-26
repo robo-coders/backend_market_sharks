@@ -2,11 +2,12 @@
 namespace App\Mail;
 
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class UserUnblocked extends Mailable
+class UserUnblocked extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

@@ -18,7 +18,7 @@ class AuthController extends Controller
             'nickname'        => 'required_if:is_anonymous,true',
             'email'           => 'required|email|unique:users',
             'whatsapp_number' => 'required|string|max:20',
-            'password'        => 'required|min:6',
+            'password'        => 'required|min:8|confirmed',
         ]);
 
         $name = $request->is_anonymous
