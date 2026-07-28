@@ -14,7 +14,7 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,
 Route::post('/payment-requests', [PaymentRequestController::class, 'store'])->middleware('throttle:5,1');
 
 Route::post('/price', function (Request $request) {
-    if ($request->header('X-API-KEY') !== env('PRICE_API_KEY')) {
+    if ($request->header('X-API-KEY') !== config('services.market_sharks.price_api_key')) {
         return response()->json(['error' => 'unauthorized'], 401);
     }
 
