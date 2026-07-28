@@ -31,7 +31,7 @@ Route::post('/price', function (Request $request) {
     ], 30);
 
     return response()->json(['ok' => true]);
-})->middleware('throttle:120,1');
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [MeController::class, 'show']);
