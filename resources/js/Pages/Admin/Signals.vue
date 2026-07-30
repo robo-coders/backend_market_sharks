@@ -155,6 +155,7 @@ const priceError = ref(false)
 const priceStale = ref(false)
 const priceUpdatedAt = ref(null)
 let pollTimer = null
+let signalStatusTimer = null
 
 const priceDirection = computed(() => {
     if (goldLivePrice.value > previousPrice.value) return 'up'
@@ -226,9 +227,31 @@ const fetchGoldPrice = async () => {
     }
 }
 
+// When a signal is live (pending or open), the monitor daemon can change
+// its state server-side — activate a pending signal, or auto-close an open
+// one on TP/SL — without the admin doing anything. Poll for that and pull
+// fresh `signal` props via a partial Inertia reload so the UI (badge,
+// button label, entry-lock) updates on its own instead of only on refresh.
+const syncSignalState = () => {
+    // Nothing live to watch → don't poll the server needlessly.
+    if (!['open', 'pending'].includes(props.signal?.status)) {
+        return
+    }
+
+    router.reload({
+        only: ['signal', 'signalUpdateUrl', 'closeSignalUrl', 'logs'],
+        preserveScroll: true,
+        preserveState: true,
+    })
+}
+
 onMounted(() => {
     fetchGoldPrice()
     pollTimer = setInterval(fetchGoldPrice, 5000)
+
+    // Slightly slower than the price poll — 5s is plenty for the button to
+    // self-heal after an auto-close, and keeps server load light.
+    signalStatusTimer = setInterval(syncSignalState, 5000)
 })
 
 const sideLabel = computed(() => (signal.side === 'buy' ? 'Buy' : 'Sell'))
@@ -513,6 +536,7 @@ const logIconPath = value => {
 
 onBeforeUnmount(() => {
     if (pollTimer) clearInterval(pollTimer)
+    if (signalStatusTimer) clearInterval(signalStatusTimer)
 })
 </script>
 

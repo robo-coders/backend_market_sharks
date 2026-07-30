@@ -51,20 +51,28 @@ class TradingSignalController extends Controller
             ]);
         }
 
-        // Decide the initial state from the live price. If the market is
-        // already at/above entry, the trade is live immediately (open);
-        // otherwise it waits as pending until the monitor sees entry hit.
+        // Decide the initial state from the live price using standard
+        // limit-order semantics:
+        //   BUY  is live immediately if price is already AT or BELOW entry.
+        //   SELL is live immediately if price is already AT or ABOVE entry.
+        // Otherwise it waits as pending until the monitor sees entry hit.
         $priceData = $goldPriceService->getPrice();
         $livePrice = (float) ($priceData['price'] ?? 0);
         $entry = (float) $validated['entry_price'];
 
-        $isLiveNow = $livePrice > 0 && $livePrice >= $entry;
+        $isLiveNow = $livePrice > 0 && (
+            $validated['signal_type'] === 'buy'
+                ? $livePrice <= $entry
+                : $livePrice >= $entry
+        );
 
         $signal = TradingSignal::create([
             ...$validated,
             'status' => $isLiveNow ? 'open' : 'pending',
             'opened_at' => $validated['opened_at'] ?? now(),
             'activated_at' => $isLiveNow ? now() : null,
+            // Context only. P/L is always measured from entry_price, never
+            // from this. Falls back to the live price at placement.
             'gold_price_at_entry' => $validated['gold_price_at_entry']
                 ?? ($livePrice > 0 ? $livePrice : null),
         ]);
@@ -219,7 +227,7 @@ class TradingSignalController extends Controller
             // Pending: waiting for price to reach entry. Deliberately does
             // NOT say "opened at" — no trade exists yet.
             'placed' => "{$symbol} {$type} signal placed — waiting for entry {$signal->entry_price}.",
-            // Live from the moment of creation (market already at/above entry).
+            // Live from the moment of creation (price already at entry side).
             'activated' => "{$symbol} {$type} trade is now live at entry {$signal->entry_price}.",
             'updated' => "{$symbol} signal was updated. Current status: " . strtoupper($signal->status) . '.',
             'closed' => "{$symbol} signal was closed" . ($closeReason ? " ({$closeReason})" : '') . '.',
