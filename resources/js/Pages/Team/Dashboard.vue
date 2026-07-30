@@ -2,6 +2,10 @@
 import TeamLayout from '@/Layouts/TeamLayout.vue'
 import { Head, usePage } from '@inertiajs/vue3'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import signalPostedUrl from '../../../sounds/signal_posted.mp3'
+import levelAlertUrl from '../../../sounds/level_alert.mp3'
+import structureUpdateUrl from '../../../sounds/structure_update.mp3'
+import tradeCloseUrl from '../../../sounds/trade_close.mp3'
 
 const props = defineProps({
     market: { type: Object, required: true },
@@ -287,6 +291,18 @@ let toastStartedAt = 0
 let toastSeq = 0
 let audioCtx = null
 
+// Real notification sounds — bundled through Vite (fingerprinted/cache-busted
+// like every other asset). "Trend" has no custom sound yet so it still uses
+// the synthesized WebAudio chime in playBeep() below.
+const signalPostedSound = new Audio(signalPostedUrl)
+const levelAlertSound = new Audio(levelAlertUrl)
+const structureUpdateSound = new Audio(structureUpdateUrl)
+const tradeCloseSound = new Audio(tradeCloseUrl)
+;[signalPostedSound, levelAlertSound, structureUpdateSound, tradeCloseSound].forEach(sound => {
+    sound.preload = 'auto'
+})
+let mediaUnlocked = false
+
 const signalAccent = computed(() => {
     if (!hasActiveSignal.value) {
         return {
@@ -443,18 +459,38 @@ const toastBadgeLabel = computed(() => {
 const unlockAudio = async () => {
     try {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext
-        if (!AudioContextClass) return
+        if (AudioContextClass) {
+            if (!audioCtx) {
+                audioCtx = new AudioContextClass()
+            }
 
-        if (!audioCtx) {
-            audioCtx = new AudioContextClass()
-        }
-
-        if (audioCtx.state === 'suspended') {
-            await audioCtx.resume()
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume()
+            }
         }
     } catch (error) {
         console.error('Audio unlock failed:', error)
     }
+
+    // Prime the recorded-sound <audio> elements with a play+immediate-pause
+    // on this same first gesture, so later programmatic play() calls fired
+    // from a Pusher event (not a user gesture) aren't blocked by autoplay
+    // policy.
+    if (mediaUnlocked) return
+    try {
+        await Promise.all(
+            [signalPostedSound, levelAlertSound, structureUpdateSound, tradeCloseSound].map(sound =>
+                sound
+                    .play()
+                    .then(() => {
+                        sound.pause()
+                        sound.currentTime = 0
+                    })
+                    .catch(() => { /* ignore — will retry on next gesture */ })
+            )
+        )
+        mediaUnlocked = true
+    } catch (error) { /* ignore */ }
 }
 
 const playTone = (startTime, frequency, { peak = 0.6, duration = 0.24 } = {}) => {
@@ -488,12 +524,47 @@ const playTone = (startTime, frequency, { peak = 0.6, duration = 0.24 } = {}) =>
     shimmer.stop(startTime + duration + 0.02)
 }
 
+const playRecordedSound = sound => {
+    try {
+        sound.currentTime = 0
+        sound.play().catch(() => { /* ignore */ })
+    } catch (error) { /* ignore */ }
+}
+
 const playBeep = async (type = 'Buy') => {
     // Respect the persisted per-user preference (Team Settings → Alert sounds).
     if (usePage().props.auth?.user?.alert_sounds_muted) return
 
     try {
         await unlockAudio()
+
+        // Signal posted / activated (placement or activation toast).
+        if (type === 'Buy' || type === 'Sell') {
+            playRecordedSound(signalPostedSound)
+            return
+        }
+
+        // Trade closed — one sound for every close reason (manual, TP, SL,
+        // profit or loss).
+        if (type === 'Loss' || type === 'Profit' || type === 'Breakeven') {
+            playRecordedSound(tradeCloseSound)
+            return
+        }
+
+        // Market structure updated.
+        if (type === 'Structure') {
+            playRecordedSound(structureUpdateSound)
+            return
+        }
+
+        // Price near a key support/resistance level.
+        if (type === 'Level') {
+            playRecordedSound(levelAlertSound)
+            return
+        }
+
+        // Trend has no custom sound yet — keep the synthesized chime,
+        // repeated 3x like the original alert did.
         if (!audioCtx) return
 
         const now = audioCtx.currentTime
@@ -502,24 +573,8 @@ const playBeep = async (type = 'Buy') => {
 
         for (let i = 0; i < REPEATS; i += 1) {
             const base = now + i * REPEAT_GAP
-
-            if (type === 'Sell' || type === 'Loss') {
-                playTone(base, 659.25, { peak: 0.64, duration: 0.42 })
-                playTone(base + 0.22, 523.25, { peak: 0.68, duration: 0.46 })
-            } else if (type === 'Structure') {
-                playTone(base, 783.99, { peak: 0.52, duration: 0.28 })
-                playTone(base + 0.18, 987.77, { peak: 0.56, duration: 0.32 })
-            } else if (type === 'Trend') {
-                playTone(base, 739.99, { peak: 0.5, duration: 0.26 })
-                playTone(base + 0.16, 932.33, { peak: 0.54, duration: 0.3 })
-            } else if (type === 'Level') {
-                playTone(base, 987.77, { peak: 0.6, duration: 0.3 })
-                playTone(base + 0.14, 1244.51, { peak: 0.64, duration: 0.32 })
-                playTone(base + 0.28, 987.77, { peak: 0.6, duration: 0.34 })
-            } else {
-                playTone(base, 880, { peak: 0.62, duration: 0.4 })
-                playTone(base + 0.22, 1108.73, { peak: 0.66, duration: 0.44 })
-            }
+            playTone(base, 739.99, { peak: 0.5, duration: 0.26 })
+            playTone(base + 0.16, 932.33, { peak: 0.54, duration: 0.3 })
         }
     } catch (error) {
         console.error('Beep playback failed:', error)

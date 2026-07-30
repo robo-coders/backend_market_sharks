@@ -47,6 +47,7 @@ import { usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import ChatPanel from './ChatPanel.vue'
 import { useChatRoom } from './useChatRoom.js'
+import juntosUrl from '../../../sounds/juntos.mp3'
 
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
@@ -61,54 +62,36 @@ const room = useChatRoom({ currentUserId: user.value?.id })
 
 const toastInitial = computed(() => (toast.value?.author || '?').charAt(0).toUpperCase())
 
-/* Notification sound — synthesized soft two-note rise. Reuses the
- * dashboard's AudioContext-unlock pattern so it never throws under
- * autoplay policy, and respects alert_sounds_muted. */
-let audioCtx = null
+/* Notification sound — "Juntos" (CC-BY, notificationsounds.com).
+ * Bundled through Vite so it's fingerprinted/cache-busted like every
+ * other asset. unlockAudio() primes the element with a play+pause on
+ * the first user gesture so the later programmatic play() — fired from
+ * a Pusher event, not a gesture — isn't blocked by autoplay policy.
+ * Respects alert_sounds_muted. */
+const notificationSound = new Audio(juntosUrl)
+notificationSound.preload = 'auto'
 let audioUnlocked = false
 
 function unlockAudio() {
+  if (audioUnlocked) return
   try {
-    const Ctx = window.AudioContext || window.webkitAudioContext
-    if (!Ctx) return
-    if (!audioCtx) audioCtx = new Ctx()
-    if (audioCtx.state === 'suspended') audioCtx.resume()
-    audioUnlocked = true
+    notificationSound
+      .play()
+      .then(() => {
+        notificationSound.pause()
+        notificationSound.currentTime = 0
+        audioUnlocked = true
+      })
+      .catch(() => { /* ignore — will retry on next gesture */ })
   } catch (e) { /* ignore */ }
 }
 
 function playNotification() {
   if (user.value?.alert_sounds_muted) return
-  if (!audioUnlocked || !audioCtx) return
+  if (!audioUnlocked) return
   try {
-    const now = audioCtx.currentTime
-    // Professional two-note chime (G5 -> D6): each note is a sine
-    // fundamental plus a quiet octave harmonic for body, with a fast
-    // attack and smooth decay. Louder (0.34 peak) but still refined.
-    const notes = [{ f: 784.0, t: 0 }, { f: 1174.7, t: 0.11 }]
-    notes.forEach(({ f, t }) => {
-      const start = now + t
-
-      const osc = audioCtx.createOscillator()
-      const gain = audioCtx.createGain()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(f, start)
-      gain.gain.setValueAtTime(0.0001, start)
-      gain.gain.exponentialRampToValueAtTime(0.34, start + 0.015)
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42)
-      osc.connect(gain); gain.connect(audioCtx.destination)
-      osc.start(start); osc.stop(start + 0.45)
-
-      const harm = audioCtx.createOscillator()
-      const harmGain = audioCtx.createGain()
-      harm.type = 'sine'
-      harm.frequency.setValueAtTime(f * 2, start)
-      harmGain.gain.setValueAtTime(0.0001, start)
-      harmGain.gain.exponentialRampToValueAtTime(0.10, start + 0.015)
-      harmGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.30)
-      harm.connect(harmGain); harmGain.connect(audioCtx.destination)
-      harm.start(start); harm.stop(start + 0.32)
-    })
+    notificationSound.currentTime = 0
+    notificationSound.play().catch(() => { /* ignore */ })
   } catch (e) { /* ignore */ }
 }
 
