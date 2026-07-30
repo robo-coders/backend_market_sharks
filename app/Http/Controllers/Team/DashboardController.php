@@ -15,12 +15,27 @@ class DashboardController extends Controller
 {
     public function index(): Response
     {
-        $signal = TradingSignal::where('status', 'open')->latest('opened_at')->latest('id')->first()
+        // Prefer a live signal (open) or a placed-but-waiting one (pending)
+        // over the most recent closed/cancelled record.
+        $signal = TradingSignal::whereIn('status', ['open', 'pending'])
+                ->latest('opened_at')->latest('id')->first()
             ?? TradingSignal::latest('opened_at')->latest('id')->first();
 
         $structure = MarketStructure::first();
         $trend = MarketTrend::first();
         $logs = TradeLog::latest('closed_at')->latest('id')->take(10)->get();
+
+        // Human label for the signal card:
+        //   open    → "Active trade"  (price reached entry, live position)
+        //   pending → "Active signal" (placed, waiting for entry)
+        //   else    → closed/cancelled
+        $statusLabel = match ($signal?->status) {
+            'open' => 'Active trade',
+            'pending' => 'Active signal',
+            'cancelled' => 'Cancelled',
+            'closed' => 'Closed',
+            default => 'Closed',
+        };
 
         return Inertia::render('Team/Dashboard', [
             'market' => [
@@ -38,7 +53,17 @@ class DashboardController extends Controller
             ],
             'signal' => [
                 'type' => ucfirst($signal?->signal_type ?? 'buy'),
-                'status' => $signal?->status === 'open' ? 'Active' : ucfirst($signal?->status ?? 'active'),
+                // Raw machine status the Vue side branches on.
+                'status_raw' => $signal?->status ?? 'closed',
+                // Back-compat: 'Active' whenever the signal is live-ish
+                // (pending or open), so existing checks keep working.
+                'status' => in_array($signal?->status, ['open', 'pending'], true)
+                    ? 'Active'
+                    : ucfirst($signal?->status ?? 'closed'),
+                // Card headline label: "Active trade" vs "Active signal".
+                'status_label' => $statusLabel,
+                'is_pending' => $signal?->status === 'pending',
+                'is_live_trade' => $signal?->status === 'open',
                 'entry_price' => (string) ($signal?->entry_price ?? '0.00'),
                 'stop_loss' => (string) ($signal?->stop_loss ?? '0.00'),
                 'take_profit' => (string) ($signal?->take_profit ?? '0.00'),

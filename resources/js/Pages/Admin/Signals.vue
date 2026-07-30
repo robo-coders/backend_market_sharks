@@ -35,7 +35,17 @@ const props = defineProps({
     closeSignalUrl: { type: String, default: '' },
 })
 
-const isEditingExisting = computed(() => Boolean(props.signal?.id) && props.signal?.status !== 'closed')
+// A signal is "existing" (edit mode) while pending or open.
+const isEditingExisting = computed(() =>
+    Boolean(props.signal?.id) && ['open', 'pending'].includes(props.signal?.status)
+)
+
+// Live trade: price reached entry. Entry + direction are LOCKED once live —
+// they're what P/L and the trade log are measured against.
+const isLiveTrade = computed(() => props.signal?.status === 'open')
+
+// Pending: placed, waiting for price to reach entry. Fully editable.
+const isPending = computed(() => props.signal?.status === 'pending')
 
 const DUBAI_TIMEZONE = 'Asia/Dubai'
 const DUBAI_TIMEZONE_LABEL = 'UTC+4 Dubai'
@@ -254,16 +264,28 @@ const stampSignalUpdatedAt = () => {
     signal.updated_at = new Date().toISOString()
 }
 
+// Guard the Buy/Sell toggle — locked once the trade is live.
+const setSide = value => {
+    if (isLiveTrade.value) return
+    signal.side = value
+}
+
 const updateSignal = () => {
     savingSignal.value = true
 
     const payload = {
         symbol: signal.symbol,
-        signal_type: signal.side,
-        entry_price: signal.entry_price,
         take_profit: signal.take_profit,
         stop_loss: signal.stop_loss,
         gold_price_at_entry: Number(goldLivePrice.value.toFixed(2)),
+    }
+
+    // Entry + direction only travel while the signal is still pending
+    // (or being created). Once live, they're locked and omitted — the
+    // backend also strips them, this is defense in depth.
+    if (!isLiveTrade.value) {
+        payload.signal_type = signal.side
+        payload.entry_price = signal.entry_price
     }
 
     if (isEditingExisting.value) {
@@ -390,7 +412,10 @@ const updateTrend = async () => {
 // last-saved entry/TP/SL values, since that made "Reset" indistinguishable
 // from "undo my edit back to what's already live".
 const resetSignal = () => {
-    signal.entry_price = 0
+    // Never wipe a locked entry — leave it as-is when the trade is live.
+    if (!isLiveTrade.value) {
+        signal.entry_price = 0
+    }
     signal.take_profit = 0
     signal.stop_loss = 0
 }
@@ -425,18 +450,22 @@ const closeActiveSignal = () => {
     if (!props.closeSignalUrl) {
         notifyToast.fire({
             icon: 'error',
-            title: 'No open signal to close',
+            title: 'No active signal to close',
         })
         return
     }
 
+    const pending = isPending.value
+
     Swal.fire({
         icon: 'warning',
-        title: 'Close active signal?',
-        text: 'Are you sure you want to close the active signal?',
+        title: pending ? 'Cancel this signal?' : 'Close active trade?',
+        text: pending
+            ? 'Price never reached entry, so nothing will be logged. This just removes the pending signal.'
+            : 'Are you sure you want to close the active trade?',
         showCancelButton: true,
-        confirmButtonText: 'Yes, close it',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: pending ? 'Yes, cancel it' : 'Yes, close it',
+        cancelButtonText: 'Back',
         confirmButtonColor: '#e11d48',
         cancelButtonColor: '#64748b',
         reverseButtons: true,
@@ -450,13 +479,13 @@ const closeActiveSignal = () => {
             onSuccess: () => {
                 notifyToast.fire({
                     icon: 'success',
-                    title: 'Signal closed',
+                    title: pending ? 'Signal cancelled' : 'Trade closed',
                 })
             },
             onError: () => {
                 notifyToast.fire({
                     icon: 'error',
-                    title: 'Failed to close signal',
+                    title: pending ? 'Failed to cancel signal' : 'Failed to close trade',
                 })
             },
             onFinish: () => {
@@ -529,7 +558,8 @@ onBeforeUnmount(() => {
                                 <div class="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-700">
                                     <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
                                     Signal
-                                    <span v-if="isEditingExisting" class="ml-1 text-indigo-400">· Editing active signal</span>
+                                    <span v-if="isLiveTrade" class="ml-1 text-indigo-400">· Active trade · entry locked</span>
+                                    <span v-else-if="isPending" class="ml-1 text-indigo-400">· Active signal · waiting for entry</span>
                                     <span v-else class="ml-1 text-indigo-400">· No active signal</span>
                                 </div>
 
@@ -553,21 +583,23 @@ onBeforeUnmount(() => {
                                         <div class="grid grid-cols-2 gap-1">
                                             <button
                                                 type="button"
-                                                class="h-10 rounded-xl px-4 text-sm font-semibold transition"
+                                                class="h-10 rounded-xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
                                                 :class="signal.side === 'buy'
                                                     ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100'
                                                     : 'text-slate-500 hover:text-slate-900'"
-                                                @click="signal.side = 'buy'"
+                                                :disabled="isLiveTrade"
+                                                @click="setSide('buy')"
                                             >
                                                 Buy
                                             </button>
                                             <button
                                                 type="button"
-                                                class="h-10 rounded-xl px-4 text-sm font-semibold transition"
+                                                class="h-10 rounded-xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
                                                 :class="signal.side === 'sell'
                                                     ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-100'
                                                     : 'text-slate-500 hover:text-slate-900'"
-                                                @click="signal.side = 'sell'"
+                                                :disabled="isLiveTrade"
+                                                @click="setSide('sell')"
                                             >
                                                 Sell
                                             </button>
@@ -576,7 +608,7 @@ onBeforeUnmount(() => {
 
                                     <button
                                         type="button"
-                                        title="Emergency close active signal"
+                                        :title="isPending ? 'Cancel pending signal' : 'Emergency close active trade'"
                                         class="group inline-flex shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 text-rose-600 shadow-[0_0_0_3px_rgba(244,63,94,0.06)] transition hover:border-rose-300 hover:bg-rose-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                         :disabled="closingSignal"
                                         @click="closeActiveSignal"
@@ -687,14 +719,19 @@ onBeforeUnmount(() => {
                             <label class="group cursor-text rounded-2xl border border-slate-200 bg-slate-50 p-4 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-indigo-100">
                                 <div class="flex items-center justify-between">
                                     <span class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Entry</span>
-                                    <svg class="h-3.5 w-3.5 text-slate-300 transition group-focus-within:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg v-if="isLiveTrade" class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" title="Locked while live">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <svg v-else class="h-3.5 w-3.5 text-slate-300 transition group-focus-within:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                 </div>
                                 <input
                                     v-model="signal.entry_price"
                                     inputmode="decimal"
-                                    class="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-[22px] font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 sm:text-[26px]"
+                                    :readonly="isLiveTrade"
+                                    :title="isLiveTrade ? 'Entry is locked once the trade is live' : ''"
+                                    class="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-[22px] font-bold tracking-tight tabular-nums text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 sm:text-[26px] read-only:cursor-not-allowed read-only:bg-slate-100 read-only:text-slate-500"
                                 />
                             </label>
 

@@ -40,7 +40,18 @@ const liveLevels = ref({
 const liveStructureUpdatedAt = ref(props.levels?.updated_at || null)
 const liveTrendUpdatedAt = ref(props.trend?.updated_at || null)
 
-const hasActiveSignal = ref(props.signal?.status === 'Active')
+// Raw machine status drives the "Active signal" vs "Active trade" label.
+// props.signal.status_raw is 'pending' | 'open' | 'closed' | 'cancelled'.
+const signalStatusRaw = ref(
+    props.signal?.status_raw ?? (props.signal?.status === 'Active' ? 'open' : 'closed')
+)
+
+// A signal occupies the card while it's pending OR open (live trade).
+const hasActiveSignal = computed(() => ['pending', 'open'].includes(signalStatusRaw.value))
+
+// Card headline: pending = still waiting for entry, open = live position.
+const isLiveTrade = computed(() => signalStatusRaw.value === 'open')
+const signalStateLabel = computed(() => (isLiveTrade.value ? 'Active trade' : 'Active signal'))
 
 const liveLogs = ref([...props.logs])
 
@@ -301,6 +312,17 @@ const toastTone = computed(() => {
         }
     }
 
+    if (toast.value.kind === 'cancelled') {
+        return {
+            accent: 'var(--text-secondary)',
+            badgeBg: 'var(--bg-elevated-2)',
+            badgeRing: 'var(--card-ring)',
+            iconBg: 'var(--bg-elevated-2)',
+            iconRing: 'var(--card-ring)',
+            icon: 'M6 6l12 12M18 6L6 18',
+        }
+    }
+
     if (toast.value.kind === 'closed') {
         return toast.value.type === 'Loss'
             ? {
@@ -344,6 +366,7 @@ const toastBadgeLabel = computed(() => {
     if (toast.value.kind === 'structure') return 'Update'
     if (toast.value.kind === 'trend') return 'Trend'
     if (toast.value.kind === 'level') return 'Level'
+    if (toast.value.kind === 'cancelled') return 'Cancelled'
     if (toast.value.kind === 'closed') return toast.value.type
     return toast.value.type
 })
@@ -465,6 +488,7 @@ const resetToast = () => {
     toastPaused.value = false
 }
 
+// Signal PLACED (pending) — waiting for price to reach entry. No trade yet.
 const showSignalToast = type => {
     resetToast()
 
@@ -474,7 +498,41 @@ const showSignalToast = type => {
         type,
         title: type === 'Sell' ? 'Sell signal posted' : 'Buy signal posted',
         symbol: liveMarket.symbol,
-        detail: `Entry ${liveSignal.value.entry_price}`,
+        detail: `Waiting for entry ${liveSignal.value.entry_price}`,
+        seq: toastSeq,
+    }
+
+    startToastTimer(TOAST_DURATION_MS)
+}
+
+// Signal ACTIVATED — price reached entry, it's now a live trade.
+const showActivatedToast = type => {
+    resetToast()
+
+    toast.value = {
+        visible: true,
+        kind: 'signal',
+        type,
+        title: type === 'Sell' ? 'Sell trade live' : 'Buy trade live',
+        symbol: liveMarket.symbol,
+        detail: `Entry ${liveSignal.value.entry_price} reached`,
+        seq: toastSeq,
+    }
+
+    startToastTimer(TOAST_DURATION_MS)
+}
+
+// Signal CANCELLED — pending signal closed before entry was ever hit.
+const showCancelledToast = type => {
+    resetToast()
+
+    toast.value = {
+        visible: true,
+        kind: 'cancelled',
+        type: 'Cancelled',
+        title: 'Signal cancelled',
+        symbol: liveMarket.symbol,
+        detail: `${type} · entry never reached`,
         seq: toastSeq,
     }
 
@@ -596,7 +654,19 @@ onMounted(() => {
         .listen('.signal.updated', async event => {
             if (!event?.signal) return
 
-            if (event.signal.status_raw === 'closed' && event.trade_log) {
+            const raw = event.signal.status_raw ?? event.signal.status
+
+            // --- Cancelled: pending signal closed before entry was hit.
+            // No trade existed → no log row, no P/L toast. Just clear card.
+            if (raw === 'cancelled') {
+                signalStatusRaw.value = 'cancelled'
+                const type = event.signal?.type || liveSignal.value.type || 'Buy'
+                showCancelledToast(type)
+                return
+            }
+
+            // --- Closed with a real trade log → P/L outcome.
+            if (raw === 'closed' && event.trade_log) {
                 liveLogs.value.unshift({
                     result: event.trade_log.result === 'profit' ? 'Profit' : (event.trade_log.result === 'loss' ? 'Loss' : 'Breakeven'),
                     signal_type: event.signal.signal_type === 'buy' ? 'Buy' : 'Sell',
@@ -605,22 +675,29 @@ onMounted(() => {
                     time: event.trade_log.closed_at,
                 })
 
-                hasActiveSignal.value = false
+                signalStatusRaw.value = 'closed'
 
                 showClosedToast(event.trade_log)
                 await playBeep(event.trade_log.result === 'loss' ? 'Loss' : 'Profit')
                 return
             }
 
+            // --- Otherwise it's a live pending/open signal update.
             liveSignal.value = {
                 ...liveSignal.value,
                 ...event.signal,
             }
 
-            hasActiveSignal.value = event.signal.status_raw !== 'closed'
+            signalStatusRaw.value = raw === 'pending' ? 'pending' : 'open'
 
             const type = event.signal?.type || liveSignal.value.type || 'Buy'
-            showSignalToast(type)
+
+            // Distinct toast: activation (went live) vs a new placement.
+            if (raw === 'open' && event.signal.just_activated) {
+                showActivatedToast(type)
+            } else {
+                showSignalToast(type)
+            }
             await playBeep(type)
         })
         .listen('.market-structure.updated', async event => {
@@ -796,7 +873,7 @@ onBeforeUnmount(() => {
                                 <div class="flex flex-wrap items-center gap-2.5">
                                     <span class="inline-flex items-center gap-2 rounded-full bg-[var(--chip-bg)] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] ring-1 ring-[var(--card-ring)] backdrop-blur-sm">
                                         <span class="h-1.5 w-1.5 rounded-full" :class="[signalAccent.dot, signalAccent.glow]"></span>
-                                        Active signal
+                                        {{ signalStateLabel }}
                                     </span>
                                 </div>
 

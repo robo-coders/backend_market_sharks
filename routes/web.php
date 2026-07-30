@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    if (! auth()->check()) {
+    if (!auth()->check()) {
         return redirect()->route('login');
     }
 
@@ -63,7 +63,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
         Route::patch('/teams/{team}/unblock', [TeamController::class, 'unblock'])->name('admin.teams.unblock');
 
         Route::get('/signals', function () {
-            $signal = TradingSignal::where('status', 'open')->latest('id')->first()
+            // Surface a live (open) OR placed-but-waiting (pending) signal
+            // over the most recent closed/cancelled record.
+            $signal = TradingSignal::whereIn('status', ['open', 'pending'])->latest('id')->first()
                 ?? TradingSignal::latest('id')->first();
 
             $structure = MarketStructure::latest('id')->first();
@@ -103,14 +105,17 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
                 'trend' => $trend,
                 'logs' => $logs,
                 'signalStoreUrl' => route('admin.signals.store'),
-                'signalUpdateUrl' => ($signal && $signal->status === 'open')
+                // Editable while pending OR open (entry gets locked client-side
+                // + server-side once the signal goes live).
+                'signalUpdateUrl' => ($signal && in_array($signal->status, ['open', 'pending'], true))
                     ? route('admin.signals.update', $signal->id)
                     : '',
                 'structureUpdateUrl' => route('admin.market-structure.update'),
                 'trendUpdateUrl' => route('admin.market-trend.update'),
                 'livePriceEndpoint' => route('admin.gold-price'),
                 'logsExportUrl' => route('admin.trade-logs.export'),
-                'closeSignalUrl' => ($signal && $signal->status === 'open')
+                // Closable while pending (→ cancel) OR open (→ close).
+                'closeSignalUrl' => ($signal && in_array($signal->status, ['open', 'pending'], true))
                     ? route('admin.signals.close', $signal->id)
                     : '',
             ]);

@@ -53,6 +53,27 @@ const TYPE_META = {
         ring: 'var(--warning-ring)',
         icon: 'M4 9h16M4 15h16',
     },
+    // Signal placed — pending, waiting for price to reach entry.
+    signal_placed: {
+        color: 'var(--accent)',
+        bg: 'var(--info-soft)',
+        ring: 'var(--info-soft)',
+        icon: 'M12 7.5v5l3.2 1.9M12 21a9 9 0 100-18 9 9 0 000 18Z',
+    },
+    // Trade activated — price reached entry, now a live trade.
+    signal_activated: {
+        color: 'var(--success)',
+        bg: 'var(--success-soft)',
+        ring: 'var(--success-ring)',
+        icon: 'M5 13l4 4L19 7',
+    },
+    // Signal cancelled — pending closed before entry, no trade logged.
+    signal_cancelled: {
+        color: 'var(--text-secondary)',
+        bg: 'var(--bg-elevated-2)',
+        ring: 'var(--card-ring)',
+        icon: 'M6 6l12 12M18 6L6 18',
+    },
     success: {
         color: 'var(--success)',
         bg: 'var(--success-soft)',
@@ -120,6 +141,12 @@ const resolveNotificationType = (notification) => {
         return 'info'
     }
 
+    // New signal-lifecycle states. Order matters — check these before the
+    // generic buy/sell-open fallback below.
+    if (title.includes('signal placed')) return 'signal_placed'
+    if (title.includes('trade activated')) return 'signal_activated'
+    if (title.includes('signal cancelled')) return 'signal_cancelled'
+
     if (notification.type === 'signal' || title.includes('signal')) {
         return body.includes('sell') ? 'sell_open' : 'buy_open'
     }
@@ -141,6 +168,10 @@ const resolveNotificationType = (notification) => {
 
 const SIGNAL_BODY_PATTERN = /^([A-Za-z0-9]{3,12})\s+(BUY|SELL)\s+signal\s+(?:is now (Open|Closed)|(?:opened|closed) at\s+([\d.,]+))/i
 
+// New lifecycle bodies: "XAUUSD BUY signal placed — waiting for entry X",
+// "XAUUSD BUY trade is now live at entry X", "XAUUSD BUY signal cancelled …".
+const LIFECYCLE_BODY_PATTERN = /^([A-Za-z0-9]{3,12})\s+(BUY|SELL)\s+(?:signal placed|trade is now live|signal cancelled)/i
+
 const formatNotificationContent = (notification) => {
     const rawTitle = notification.title || ''
     const rawBody = notification.body || ''
@@ -152,6 +183,16 @@ const formatNotificationContent = (notification) => {
         return {
             title: `${symbol.toUpperCase()} ${dir} Signal`,
             body: price ? `Opened at ${price}` : `Signal is now ${status}`,
+        }
+    }
+
+    const lifecycleMatch = rawBody.match(LIFECYCLE_BODY_PATTERN)
+    if (lifecycleMatch) {
+        const [, symbol, direction] = lifecycleMatch
+        const dir = direction.charAt(0).toUpperCase() + direction.slice(1).toLowerCase()
+        return {
+            title: `${symbol.toUpperCase()} ${dir} — ${rawTitle}`,
+            body: rawBody,
         }
     }
 
@@ -419,7 +460,9 @@ const prependRealtimeNotification = (payload) => {
         return
     }
 
-    if (signal.status_raw === 'closed' && tradeLog) {
+    const raw = signal.status_raw ?? signal.status
+
+    if (raw === 'closed' && tradeLog) {
         const resultLabel = tradeLog.result === 'profit'
             ? 'Profit'
             : (tradeLog.result === 'loss' ? 'Loss' : 'Breakeven')
@@ -451,11 +494,28 @@ const prependRealtimeNotification = (payload) => {
         return
     }
 
+    // Lifecycle temp notification (pending / activated / cancelled / other).
+    const tempTitle = (() => {
+        if (raw === 'pending') return 'Signal placed'
+        if (raw === 'open') return 'Trade activated'
+        if (raw === 'cancelled') return 'Signal cancelled'
+        return signal.status === 'Closed' ? 'Trading signal closed' : 'Trading signal updated'
+    })()
+
+    const tempBody = (() => {
+        const sym = signal.symbol
+        const dir = signal.type
+        if (raw === 'pending') return `${sym} ${dir} signal placed — waiting for entry.`
+        if (raw === 'open') return `${sym} ${dir} trade is now live at entry.`
+        if (raw === 'cancelled') return `${sym} ${dir} signal cancelled — entry never reached.`
+        return `${sym} ${dir} signal is now ${signal.status}.`
+    })()
+
     notifications.value.unshift({
         id: `temp-${signal.id}-${Date.now()}`,
         signal_id: signal.id,
-        title: signal.status === 'Closed' ? 'Trading signal closed' : 'Trading signal updated',
-        body: `${signal.symbol} ${signal.type} signal is now ${signal.status}.`,
+        title: tempTitle,
+        body: tempBody,
         type: 'signal',
         read: false,
         read_at: null,

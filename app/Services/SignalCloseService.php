@@ -17,8 +17,61 @@ class SignalCloseService
     }
 
     /**
-     * Called by the scheduled command. Checks the single open signal
-     * (if any) against the live price and closes it if TP or SL was hit.
+     * Called each monitor tick. Promotes a pending signal to a live
+     * trade (open) once the live price reaches its entry. This is what
+     * turns "Active signal" into "Active trade" on the dashboards.
+     */
+    public function activatePendingIfReached(): void
+    {
+        DB::transaction(function () {
+            $signal = TradingSignal::where('status', 'pending')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$signal) {
+                return;
+            }
+
+            $priceData = $this->goldPriceService->getPrice();
+            $price = (float) ($priceData['price'] ?? 0);
+
+            if ($price <= 0) {
+                return; // provider unavailable, skip this tick
+            }
+
+            if (!$signal->hasReachedEntry($price)) {
+                return; // still waiting for price to reach entry
+            }
+
+            $signal->update([
+                'status' => 'open',
+                'activated_at' => now(),
+                // Stamp the real price at the moment the trade went live,
+                // so P/L context and the log reflect activation, not placement.
+                'gold_price_at_entry' => $signal->gold_price_at_entry ?? $price,
+            ]);
+
+            $fresh = $signal->fresh();
+
+            $this->notifyActivated($fresh);
+
+            // justActivated = true → dashboard shows the "trade live" toast
+            // only on this pending→open transition, not on every update.
+            event(new TeamSignalUpdated($fresh, null, true));
+
+            Log::info('Trading signal activated', [
+                'signal_id' => $fresh->id,
+                'entry_price' => $fresh->entry_price,
+                'activated_price' => $price,
+            ]);
+        });
+    }
+
+    /**
+     * Called by the scheduled command. Checks the single OPEN (live)
+     * signal against the live price and closes it if TP or SL was hit.
+     * Pending signals are never auto-closed here — they only get
+     * promoted to open by activatePendingIfReached().
      */
     public function checkAndCloseIfTriggered(): void
     {
@@ -49,13 +102,14 @@ class SignalCloseService
     }
 
     /**
-     * Manual / emergency close, triggered by an admin action. Ignores
-     * SL/TP entirely and always fetches the live price server-side
-     * (never trusts a client-supplied price) so it can't be spoofed or
-     * stale. Profit/loss is entry-relative, same formula as the
-     * automatic close, just without a tp/sl trigger reason.
+     * Manual / emergency close, triggered by an admin action.
+     *
+     * If the signal is still PENDING (price never reached entry), this
+     * is a cancel — no trade actually existed, so no P/L is computed
+     * and no trade log is written. Otherwise it closes the live trade
+     * exactly as before, always fetching the live price server-side.
      */
-    public function closeManually(TradingSignal $signal, ?int $closedByUserId = null): TradeLog
+    public function closeManually(TradingSignal $signal, ?int $closedByUserId = null): ?TradeLog
     {
         return DB::transaction(function () use ($signal, $closedByUserId) {
             $locked = TradingSignal::where('id', $signal->id)
@@ -66,8 +120,14 @@ class SignalCloseService
                 throw new \RuntimeException('Signal no longer exists.');
             }
 
-            if ($locked->status !== 'open') {
+            if (in_array($locked->status, ['closed', 'cancelled'], true)) {
                 throw new \RuntimeException('Signal is already closed.');
+            }
+
+            // Pending signal → cancel. Never reached entry, so it was
+            // never a real trade: no profit/loss, no log.
+            if ($locked->status === 'pending') {
+                return $this->cancelSignal($locked, $closedByUserId);
             }
 
             $priceData = $this->goldPriceService->getPrice();
@@ -79,6 +139,32 @@ class SignalCloseService
 
             return $this->closeSignal($locked, $price, 'manual', $price, $closedByUserId);
         });
+    }
+
+    /**
+     * Cancel a pending signal. No trade log, no P/L — it never became a
+     * trade. Fires a "Signal cancelled" notification + a realtime event
+     * so the dashboards drop it from the active card.
+     */
+    public function cancelSignal(TradingSignal $signal, ?int $closedByUserId = null): ?TradeLog
+    {
+        $signal->update([
+            'status' => 'cancelled',
+            'closed_at' => now(),
+        ]);
+
+        $this->notifyCancelled($signal);
+
+        // Emit with a null trade_log so listeners know this was a cancel,
+        // not a P/L-bearing close.
+        event(new TeamSignalUpdated($signal->fresh(), null));
+
+        Log::info('Trading signal cancelled (pending, entry never reached)', [
+            'signal_id' => $signal->id,
+            'entry_price' => $signal->entry_price,
+        ]);
+
+        return null;
     }
 
     protected function resolveTrigger(TradingSignal $signal, float $price): ?string
@@ -95,8 +181,9 @@ class SignalCloseService
     }
 
     /**
-     * Shared close logic. Used by the auto-monitor command and the
-     * manual-close flow above.
+     * Shared close logic for genuinely live (open) trades. Used by the
+     * auto-monitor and the manual-close flow. Never called for pending
+     * signals — those go through cancelSignal().
      */
     public function closeSignal(
         TradingSignal $signal,
@@ -162,6 +249,29 @@ class SignalCloseService
         $sign = $profitLoss >= 0 ? '+' : '';
         $message = strtoupper($signal->symbol) . " {$reasonLabel}. Result: {$sign}" . number_format($profitLoss, 2) . '.';
 
+        $this->pushNotification($title, $message);
+    }
+
+    protected function notifyActivated(TradingSignal $signal): void
+    {
+        $title = 'Trade activated';
+        $message = strtoupper($signal->symbol) . ' ' . strtoupper($signal->signal_type)
+            . ' trade is now live at entry ' . $signal->entry_price . '.';
+
+        $this->pushNotification($title, $message);
+    }
+
+    protected function notifyCancelled(TradingSignal $signal): void
+    {
+        $title = 'Signal cancelled';
+        $message = strtoupper($signal->symbol) . ' ' . strtoupper($signal->signal_type)
+            . ' signal cancelled — price never reached entry ' . $signal->entry_price . '.';
+
+        $this->pushNotification($title, $message);
+    }
+
+    protected function pushNotification(string $title, string $message): void
+    {
         $notification = Notification::create([
             'title' => $title,
             'message' => $message,

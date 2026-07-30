@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 class SignalsMonitor extends Command
 {
     protected $signature = 'signals:monitor {--daemon : Run forever (like queue:work) instead of a single scheduler window}';
-    protected $description = 'Watch the open trading signal (auto-close on TP/SL) and alert when price nears a support/resistance level.';
+    protected $description = 'Activate pending signals on entry hit, auto-close open signals on TP/SL, and alert when price nears a support/resistance level.';
 
     public function handle(SignalCloseService $service, LevelAlertService $levels): int
     {
@@ -24,8 +24,17 @@ class SignalsMonitor extends Command
         Log::info('signals:monitor started', ['daemon' => $daemon]);
 
         while ($daemon || now()->lt($deadline)) {
+            $hasPendingSignal = TradingSignal::where('status', 'pending')->exists();
             $hasOpenSignal = TradingSignal::where('status', 'open')->exists();
             $hasLevels = MarketStructure::query()->exists();
+
+            // Promote pending → open first: a signal that reaches entry
+            // this tick should immediately become eligible for TP/SL.
+            if ($hasPendingSignal) {
+                $service->activatePendingIfReached();
+                // Re-check: it may have just gone live.
+                $hasOpenSignal = $hasOpenSignal || TradingSignal::where('status', 'open')->exists();
+            }
 
             if ($hasOpenSignal) {
                 $service->checkAndCloseIfTriggered();
@@ -38,6 +47,7 @@ class SignalsMonitor extends Command
             if ($iteration % 12 === 0) {
                 Log::info('signals:monitor tick', [
                     'daemon' => $daemon,
+                    'pending_signal' => $hasPendingSignal,
                     'open_signal' => $hasOpenSignal,
                     'has_levels' => $hasLevels,
                 ]);
@@ -45,7 +55,7 @@ class SignalsMonitor extends Command
 
             $iteration++;
 
-            if (!$daemon && !$hasOpenSignal && !$hasLevels) {
+            if (!$daemon && !$hasPendingSignal && !$hasOpenSignal && !$hasLevels) {
                 break;
             }
 

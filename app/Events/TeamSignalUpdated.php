@@ -17,6 +17,9 @@ class TeamSignalUpdated implements ShouldBroadcastNow
     public function __construct(
         public TradingSignal $signal,
         public ?TradeLog $tradeLog = null,
+        // True only on the pending → open promotion, so the dashboard can
+        // fire the "trade live" toast for that transition specifically.
+        public bool $justActivated = false,
     ) {
     }
 
@@ -44,6 +47,8 @@ class TeamSignalUpdated implements ShouldBroadcastNow
                 'take_profit' => (string) $this->signal->take_profit,
                 'status' => ucfirst($this->signal->status ?? 'open'),
                 'status_raw' => $this->signal->status ?? 'open',
+                'just_activated' => $this->justActivated,
+                'activated_at' => optional($this->signal->activated_at)?->format('d M Y, h:i A'),
                 'updated_at' => optional($this->signal->opened_at ?? $this->signal->updated_at)?->format('d M Y, h:i A'),
             ],
             'trade_log' => $this->tradeLog ? [
