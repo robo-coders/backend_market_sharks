@@ -39,56 +39,74 @@ const liveLevels = ref({
 })
 const liveStructureUpdatedAt = ref(props.levels?.updated_at || null)
 
-// Tracks which structure boxes are currently glowing after a change.
-// Keys look like 'sup-0', 'res-2'. A box is added on change and removed
-// ~2.5s later so the glow auto-fades. Only boxes whose value actually
-// changed light up — untouched levels stay calm.
-const highlightedLevels = ref(new Set())
+// Structure-change highlight state.
+//
+// When a level changes we record not just THAT it changed but which
+// DIRECTION (up/down) — so the highlight can carry meaning, not just
+// attention. Each entry: { dir: 'up'|'down'|'flat' }. The box shows a
+// crisp directional edge + a persistent pip for ~18s, then clears.
+// Values of 0 / empty are treated as "not set" and never highlighted —
+// clearing a level or an untouched zero shouldn't flash.
+const highlightedLevels = ref({}) // { 'sup-0': { dir }, 'res-1': { dir } }
 const highlightTimers = {}
 
-const flashLevel = key => {
-    highlightedLevels.value.add(key)
-    // Force reactivity on the Set.
-    highlightedLevels.value = new Set(highlightedLevels.value)
+const isMeaningful = v =>
+    !(v === null || v === undefined || v === '' || Number(v) === 0)
+
+const flashLevel = (key, dir) => {
+    highlightedLevels.value = { ...highlightedLevels.value, [key]: { dir } }
 
     if (highlightTimers[key]) {
         clearTimeout(highlightTimers[key])
     }
 
     highlightTimers[key] = setTimeout(() => {
-        highlightedLevels.value.delete(key)
-        highlightedLevels.value = new Set(highlightedLevels.value)
+        const next = { ...highlightedLevels.value }
+        delete next[key]
+        highlightedLevels.value = next
         delete highlightTimers[key]
-    }, 20000)
+    }, 18000)
 }
 
-// Compares an incoming structure payload against the current levels and
-// flashes only the boxes whose value genuinely changed. Returns the list
-// of changed levels (label + value) so the toast can report exactly what
-// changed instead of a generic S1·S2·S3 list.
+// Diffs incoming structure against current levels. Flashes only boxes
+// whose MEANINGFUL value changed, records direction, and returns the
+// changed levels so the toast reports exactly what changed.
 const diffAndFlashLevels = incoming => {
-    const norm = v => (v === null || v === undefined || v === '' ? null : String(v))
     const changed = []
 
-    const nextSupports = [incoming.support_1, incoming.support_2, incoming.support_3]
-    const nextResistances = [incoming.resistance_1, incoming.resistance_2, incoming.resistance_3]
+    const rows = [
+        ['sup', 'S', [incoming.support_1, incoming.support_2, incoming.support_3], liveLevels.value.supports],
+        ['res', 'R', [incoming.resistance_1, incoming.resistance_2, incoming.resistance_3], liveLevels.value.resistances],
+    ]
 
-    nextSupports.forEach((val, i) => {
-        if (norm(val) !== norm(liveLevels.value.supports[i])) {
-            flashLevel(`sup-${i}`)
-            changed.push({ label: `S${i + 1}`, value: val })
-        }
-    })
+    rows.forEach(([prefix, label, nextVals, prevVals]) => {
+        nextVals.forEach((val, i) => {
+            const prev = prevVals[i]
+            const prevNum = Number(prev)
+            const nextNum = Number(val)
 
-    nextResistances.forEach((val, i) => {
-        if (norm(val) !== norm(liveLevels.value.resistances[i])) {
-            flashLevel(`res-${i}`)
-            changed.push({ label: `R${i + 1}`, value: val })
-        }
+            const prevSet = isMeaningful(prev)
+            const nextSet = isMeaningful(val)
+
+            // Only highlight when the new value is meaningful AND actually
+            // different. Clearing a level (→ 0) doesn't flash.
+            if (nextSet && String(val) !== String(prev)) {
+                let dir = 'flat'
+                if (prevSet && Number.isFinite(prevNum) && Number.isFinite(nextNum)) {
+                    dir = nextNum > prevNum ? 'up' : nextNum < prevNum ? 'down' : 'flat'
+                }
+
+                flashLevel(`${prefix}-${i}`, dir)
+                changed.push({ label: `${label}${i + 1}`, value: val, dir })
+            }
+        })
     })
 
     return changed
 }
+
+const highlightDir = key => highlightedLevels.value[key]?.dir ?? null
+const isHighlighted = key => key in highlightedLevels.value
 const liveTrendUpdatedAt = ref(props.trend?.updated_at || null)
 
 // Raw machine status drives the "Active signal" vs "Active trade" label.
@@ -593,31 +611,22 @@ const showCancelledToast = type => {
 const showStructureToast = (structure, changed = []) => {
     resetToast()
 
-    // Prefer reporting exactly what changed (matches the box that glows).
-    // Fall back to whichever levels are set only when we can't tell what
-    // changed (e.g. first load), never a misleading generic list.
+    // Report exactly what changed, with a direction arrow — matches the
+    // box that highlights. Only meaningful changes reach here (the diff
+    // already filtered out zero/cleared levels), so no misleading padding.
     let detail
     if (changed.length) {
         detail = changed
             .slice(0, 3)
-            .map(({ label, value }) => {
-                const v = value === null || value === undefined || value === '' ? '—' : value
-                return `${label} ${v}`
+            .map(({ label, value, dir }) => {
+                const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : ''
+                return `${label} ${value}${arrow ? ' ' + arrow : ''}`
             })
-            .join(' · ')
+            .join('  ·  ')
     } else {
-        const setLevels = [
-            ['S1', structure?.support_1],
-            ['S2', structure?.support_2],
-            ['S3', structure?.support_3],
-            ['R1', structure?.resistance_1],
-            ['R2', structure?.resistance_2],
-            ['R3', structure?.resistance_3],
-        ].filter(([, value]) => value !== null && value !== undefined && value !== '')
-
-        detail = setLevels.length
-            ? setLevels.slice(0, 3).map(([label, value]) => `${label} ${value}`).join(' · ')
-            : 'Levels updated'
+        // Nothing meaningful changed (e.g. a level was cleared). Keep it
+        // honest and generic rather than listing zeros.
+        detail = 'Levels updated'
     }
 
     toast.value = {
@@ -1068,10 +1077,29 @@ onBeforeUnmount(() => {
                                     v-for="(level, index) in liveLevels.supports"
                                     :key="`sup-${index}`"
                                     class="level-box flex items-center justify-between gap-2 rounded-2xl bg-[var(--success-softer)] px-3 py-3 sm:px-4"
-                                    :class="{ 'is-highlight': highlightedLevels.has(`sup-${index}`) }"
+                                    :class="[
+                                        isHighlighted(`sup-${index}`) && 'is-highlight',
+                                        highlightDir(`sup-${index}`) === 'up' && 'dir-up',
+                                        highlightDir(`sup-${index}`) === 'down' && 'dir-down',
+                                    ]"
                                 >
-                                    <span class="text-sm text-[var(--text-tertiary)]">S{{ index + 1 }}</span>
-                                    <span class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
+                                    <span class="flex items-center gap-1.5 text-sm text-[var(--text-tertiary)]">
+                                        <span
+                                            v-if="isHighlighted(`sup-${index}`)"
+                                            class="level-pip"
+                                            :class="[
+                                                highlightDir(`sup-${index}`) === 'up' && 'pip-up',
+                                                highlightDir(`sup-${index}`) === 'down' && 'pip-down',
+                                            ]"
+                                        ></span>
+                                        S{{ index + 1 }}
+                                    </span>
+                                    <Transition name="level-swap" mode="out-in">
+                                        <span
+                                            :key="formatLevel(level)"
+                                            class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums"
+                                        >{{ formatLevel(level) }}</span>
+                                    </Transition>
                                 </div>
                             </div>
 
@@ -1081,10 +1109,29 @@ onBeforeUnmount(() => {
                                     v-for="(level, index) in liveLevels.resistances"
                                     :key="`res-${index}`"
                                     class="level-box flex items-center justify-between gap-2 rounded-2xl bg-[var(--danger-softer)] px-3 py-3 sm:px-4"
-                                    :class="{ 'is-highlight': highlightedLevels.has(`res-${index}`) }"
+                                    :class="[
+                                        isHighlighted(`res-${index}`) && 'is-highlight',
+                                        highlightDir(`res-${index}`) === 'up' && 'dir-up',
+                                        highlightDir(`res-${index}`) === 'down' && 'dir-down',
+                                    ]"
                                 >
-                                    <span class="text-sm text-[var(--text-tertiary)]">R{{ index + 1 }}</span>
-                                    <span class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
+                                    <span class="flex items-center gap-1.5 text-sm text-[var(--text-tertiary)]">
+                                        <span
+                                            v-if="isHighlighted(`res-${index}`)"
+                                            class="level-pip"
+                                            :class="[
+                                                highlightDir(`res-${index}`) === 'up' && 'pip-up',
+                                                highlightDir(`res-${index}`) === 'down' && 'pip-down',
+                                            ]"
+                                        ></span>
+                                        R{{ index + 1 }}
+                                    </span>
+                                    <Transition name="level-swap" mode="out-in">
+                                        <span
+                                            :key="formatLevel(level)"
+                                            class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums"
+                                        >{{ formatLevel(level) }}</span>
+                                    </Transition>
                                 </div>
                             </div>
                         </div>
@@ -1296,51 +1343,116 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* Market-structure change highlight — two-phase, understated.
+/* Market-structure change highlight — directional, readable in both themes.
  *
- * Phase 1 (first ~1.6s): a soft accent glow ring pulses once to catch the
- *   eye the moment a level changes.
- * Phase 2 (~1.6s → ~18s): the ring fades but a gentle tinted background
- *   wash PERSISTS, so a late glance still sees which box changed.
- * Phase 3 (last ~2s): the wash eases out and the box returns to rest.
+ * Design rationale (senior UX):
+ *  - A soft background wash alone is nearly invisible on dark cards, so we
+ *    lead with a CRISP directional EDGE (a solid 3px inset bar) that reads
+ *    instantly regardless of theme.
+ *  - Colour carries MEANING: green = level moved up, red = moved down,
+ *    neutral accent = newly set / no prior value. The team learns intent at
+ *    a glance, not just "something changed".
+ *  - The NUMBER itself animates on change (level-swap transition) — the eye
+ *    is already on the value, so that's the strongest change signal.
+ *  - A small persistent PIP by the label keeps a quiet marker alive for the
+ *    full ~18s hold, so a late glance still catches the box.
  *
- * Total ~20s. Uses theme vars via color-mix so it reads correctly in both
- * light and dark. The base .level-box transition keeps the return smooth. */
+ * Timeline (18s): edge + wash pulse in (~0.4s) → hold steady → ease out
+ * over the last ~2s. Directionless default uses --accent. */
 .level-box {
     position: relative;
-    transition: box-shadow 0.6s ease, background-color 0.6s ease;
+    overflow: hidden;
+    transition: box-shadow 0.5s ease, background-color 0.5s ease;
 }
+
+/* The directional inset edge, drawn as a pseudo-element so it sits above
+ * the box's own background and rounded corners cleanly. */
+.level-box::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--edge-color, var(--accent));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
 .level-box.is-highlight {
-    animation: level-highlight 20s ease-out forwards;
+    --edge-color: var(--accent);
+    animation: level-highlight 18s ease-out forwards;
 }
+.level-box.is-highlight::before {
+    animation: level-edge 18s ease-out forwards;
+}
+
+/* Directional colour overrides. --success-text / --danger-text are the
+ * theme's strong, high-contrast semantic colours — legible in light & dark. */
+.level-box.dir-up {
+    --edge-color: var(--success-text);
+}
+.level-box.dir-down {
+    --edge-color: var(--danger-text);
+}
+
 @keyframes level-highlight {
-    /* Phase 1 — glow pulse in */
     0% {
-        box-shadow: 0 0 0 0 rgba(92, 200, 255, 0);
-        background-color: color-mix(in srgb, var(--accent) 0%, transparent);
+        background-color: color-mix(in srgb, var(--edge-color) 0%, transparent);
     }
-    4% {
-        box-shadow: 0 0 0 1.5px var(--accent),
-            0 0 18px 2px color-mix(in srgb, var(--accent) 45%, transparent);
-        background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+    3% {
+        background-color: color-mix(in srgb, var(--edge-color) 20%, transparent);
     }
-    /* Ring fades, wash settles to its persistent resting tint */
-    9% {
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
-            0 0 0 0 rgba(92, 200, 255, 0);
-        background-color: color-mix(in srgb, var(--accent) 12%, transparent);
-    }
-    /* Phase 2 — hold the soft wash steady through the middle */
     88% {
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
-            0 0 0 0 rgba(92, 200, 255, 0);
-        background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+        background-color: color-mix(in srgb, var(--edge-color) 14%, transparent);
     }
-    /* Phase 3 — ease everything back to rest */
     100% {
-        box-shadow: 0 0 0 0 rgba(92, 200, 255, 0);
-        background-color: color-mix(in srgb, var(--accent) 0%, transparent);
+        background-color: color-mix(in srgb, var(--edge-color) 0%, transparent);
     }
+}
+
+@keyframes level-edge {
+    0% { opacity: 0; }
+    3% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Persistent directional pip next to the label. */
+.level-pip {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+    animation: pip-in 0.35s ease-out;
+}
+.level-pip.pip-up {
+    background: var(--success-text);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--success-text) 60%, transparent);
+}
+.level-pip.pip-down {
+    background: var(--danger-text);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--danger-text) 60%, transparent);
+}
+@keyframes pip-in {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+/* Number swap — old value eases up/out, new value eases in. Fast and
+ * subtle so it registers as "the number just updated". */
+.level-swap-enter-active,
+.level-swap-leave-active {
+    transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.level-swap-enter-from {
+    opacity: 0;
+    transform: translateY(6px);
+}
+.level-swap-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
 }
 
 .toast-progress {
