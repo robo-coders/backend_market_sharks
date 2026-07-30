@@ -38,6 +38,57 @@ const liveLevels = ref({
     resistances: Array.isArray(props.levels?.resistances) ? [...props.levels.resistances] : [],
 })
 const liveStructureUpdatedAt = ref(props.levels?.updated_at || null)
+
+// Tracks which structure boxes are currently glowing after a change.
+// Keys look like 'sup-0', 'res-2'. A box is added on change and removed
+// ~2.5s later so the glow auto-fades. Only boxes whose value actually
+// changed light up — untouched levels stay calm.
+const highlightedLevels = ref(new Set())
+const highlightTimers = {}
+
+const flashLevel = key => {
+    highlightedLevels.value.add(key)
+    // Force reactivity on the Set.
+    highlightedLevels.value = new Set(highlightedLevels.value)
+
+    if (highlightTimers[key]) {
+        clearTimeout(highlightTimers[key])
+    }
+
+    highlightTimers[key] = setTimeout(() => {
+        highlightedLevels.value.delete(key)
+        highlightedLevels.value = new Set(highlightedLevels.value)
+        delete highlightTimers[key]
+    }, 20000)
+}
+
+// Compares an incoming structure payload against the current levels and
+// flashes only the boxes whose value genuinely changed. Returns the list
+// of changed levels (label + value) so the toast can report exactly what
+// changed instead of a generic S1·S2·S3 list.
+const diffAndFlashLevels = incoming => {
+    const norm = v => (v === null || v === undefined || v === '' ? null : String(v))
+    const changed = []
+
+    const nextSupports = [incoming.support_1, incoming.support_2, incoming.support_3]
+    const nextResistances = [incoming.resistance_1, incoming.resistance_2, incoming.resistance_3]
+
+    nextSupports.forEach((val, i) => {
+        if (norm(val) !== norm(liveLevels.value.supports[i])) {
+            flashLevel(`sup-${i}`)
+            changed.push({ label: `S${i + 1}`, value: val })
+        }
+    })
+
+    nextResistances.forEach((val, i) => {
+        if (norm(val) !== norm(liveLevels.value.resistances[i])) {
+            flashLevel(`res-${i}`)
+            changed.push({ label: `R${i + 1}`, value: val })
+        }
+    })
+
+    return changed
+}
 const liveTrendUpdatedAt = ref(props.trend?.updated_at || null)
 
 // Raw machine status drives the "Active signal" vs "Active trade" label.
@@ -539,24 +590,35 @@ const showCancelledToast = type => {
     startToastTimer(TOAST_DURATION_MS)
 }
 
-const showStructureToast = structure => {
+const showStructureToast = (structure, changed = []) => {
     resetToast()
 
-    // Show whichever levels are actually set (up to 3), instead of a
-    // hard-coded "S1 · R1" that renders as dashes when other slots were
-    // the ones updated.
-    const setLevels = [
-        ['S1', structure?.support_1],
-        ['S2', structure?.support_2],
-        ['S3', structure?.support_3],
-        ['R1', structure?.resistance_1],
-        ['R2', structure?.resistance_2],
-        ['R3', structure?.resistance_3],
-    ].filter(([, value]) => value !== null && value !== undefined && value !== '')
+    // Prefer reporting exactly what changed (matches the box that glows).
+    // Fall back to whichever levels are set only when we can't tell what
+    // changed (e.g. first load), never a misleading generic list.
+    let detail
+    if (changed.length) {
+        detail = changed
+            .slice(0, 3)
+            .map(({ label, value }) => {
+                const v = value === null || value === undefined || value === '' ? '—' : value
+                return `${label} ${v}`
+            })
+            .join(' · ')
+    } else {
+        const setLevels = [
+            ['S1', structure?.support_1],
+            ['S2', structure?.support_2],
+            ['S3', structure?.support_3],
+            ['R1', structure?.resistance_1],
+            ['R2', structure?.resistance_2],
+            ['R3', structure?.resistance_3],
+        ].filter(([, value]) => value !== null && value !== undefined && value !== '')
 
-    const detail = setLevels.length
-        ? setLevels.slice(0, 3).map(([label, value]) => `${label} ${value}`).join(' · ')
-        : 'All levels cleared'
+        detail = setLevels.length
+            ? setLevels.slice(0, 3).map(([label, value]) => `${label} ${value}`).join(' · ')
+            : 'Levels updated'
+    }
 
     toast.value = {
         visible: true,
@@ -702,6 +764,12 @@ onMounted(() => {
         })
         .listen('.market-structure.updated', async event => {
             if (event?.structure) {
+                // Flash only the boxes whose value changed — must run
+                // BEFORE we overwrite liveLevels so the diff sees the old
+                // values. Returns the changed levels so the toast reports
+                // exactly what changed (matching the box that glows).
+                const changedLevels = diffAndFlashLevels(event.structure)
+
                 // Positions are preserved even when a value is null — this
                 // is what keeps S1/S2/S3 and R1/R2/R3 correctly labeled.
                 // Filtering nulls out here would shift later values into
@@ -721,7 +789,7 @@ onMounted(() => {
 
                 liveStructureUpdatedAt.value = event.structure.updated_at || null
 
-                showStructureToast(event.structure)
+                showStructureToast(event.structure, changedLevels)
                 await playBeep('Structure')
 
                 // New levels may already be within the alert margin of the
@@ -784,6 +852,9 @@ onBeforeUnmount(() => {
     if (clockTimer) {
         clearInterval(clockTimer)
     }
+
+    // Clear any pending structure-highlight fade timers.
+    Object.values(highlightTimers).forEach(clearTimeout)
 
     if (unlockHandler) {
         window.removeEventListener('click', unlockHandler)
@@ -996,7 +1067,8 @@ onBeforeUnmount(() => {
                                 <div
                                     v-for="(level, index) in liveLevels.supports"
                                     :key="`sup-${index}`"
-                                    class="flex items-center justify-between gap-2 rounded-2xl bg-[var(--success-softer)] px-3 py-3 sm:px-4"
+                                    class="level-box flex items-center justify-between gap-2 rounded-2xl bg-[var(--success-softer)] px-3 py-3 sm:px-4"
+                                    :class="{ 'is-highlight': highlightedLevels.has(`sup-${index}`) }"
                                 >
                                     <span class="text-sm text-[var(--text-tertiary)]">S{{ index + 1 }}</span>
                                     <span class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
@@ -1008,7 +1080,8 @@ onBeforeUnmount(() => {
                                 <div
                                     v-for="(level, index) in liveLevels.resistances"
                                     :key="`res-${index}`"
-                                    class="flex items-center justify-between gap-2 rounded-2xl bg-[var(--danger-softer)] px-3 py-3 sm:px-4"
+                                    class="level-box flex items-center justify-between gap-2 rounded-2xl bg-[var(--danger-softer)] px-3 py-3 sm:px-4"
+                                    :class="{ 'is-highlight': highlightedLevels.has(`res-${index}`) }"
                                 >
                                     <span class="text-sm text-[var(--text-tertiary)]">R{{ index + 1 }}</span>
                                     <span class="truncate text-[13px] sm:text-base font-semibold text-[var(--text-primary)] tabular-nums">{{ formatLevel(level) }}</span>
@@ -1223,6 +1296,53 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Market-structure change highlight — two-phase, understated.
+ *
+ * Phase 1 (first ~1.6s): a soft accent glow ring pulses once to catch the
+ *   eye the moment a level changes.
+ * Phase 2 (~1.6s → ~18s): the ring fades but a gentle tinted background
+ *   wash PERSISTS, so a late glance still sees which box changed.
+ * Phase 3 (last ~2s): the wash eases out and the box returns to rest.
+ *
+ * Total ~20s. Uses theme vars via color-mix so it reads correctly in both
+ * light and dark. The base .level-box transition keeps the return smooth. */
+.level-box {
+    position: relative;
+    transition: box-shadow 0.6s ease, background-color 0.6s ease;
+}
+.level-box.is-highlight {
+    animation: level-highlight 20s ease-out forwards;
+}
+@keyframes level-highlight {
+    /* Phase 1 — glow pulse in */
+    0% {
+        box-shadow: 0 0 0 0 rgba(92, 200, 255, 0);
+        background-color: color-mix(in srgb, var(--accent) 0%, transparent);
+    }
+    4% {
+        box-shadow: 0 0 0 1.5px var(--accent),
+            0 0 18px 2px color-mix(in srgb, var(--accent) 45%, transparent);
+        background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    /* Ring fades, wash settles to its persistent resting tint */
+    9% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+            0 0 0 0 rgba(92, 200, 255, 0);
+        background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+    /* Phase 2 — hold the soft wash steady through the middle */
+    88% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+            0 0 0 0 rgba(92, 200, 255, 0);
+        background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+    /* Phase 3 — ease everything back to rest */
+    100% {
+        box-shadow: 0 0 0 0 rgba(92, 200, 255, 0);
+        background-color: color-mix(in srgb, var(--accent) 0%, transparent);
+    }
+}
+
 .toast-progress {
     animation: toast-countdown 5.6s linear forwards;
     transform-origin: left;
