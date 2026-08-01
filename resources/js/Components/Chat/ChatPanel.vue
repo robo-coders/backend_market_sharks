@@ -307,7 +307,7 @@ watch(() => messages.value.length, async () => {
   if (nearBottom) scrollToBottom()
 })
 
-defineExpose({ scrollToBottom })
+defineExpose({ scrollToBottom, focus: () => input.value?.focus() })
 </script>
 
 <style scoped>
@@ -495,6 +495,16 @@ defineExpose({ scrollToBottom })
 .composer__ta {
   flex: 1; resize: none; font: inherit; line-height: 1.45; max-height: 120px;
   padding: 8px 6px; border: none; background: transparent; color: var(--c-text); outline: none;
+  box-shadow: none;
+}
+/* @tailwindcss/forms applies a default focus ring (box-shadow) to every
+ * textarea. It doesn't respect our rounded pill shape, so it renders as a
+ * hard square overlapping .composer's rounded corners. The parent's own
+ * :focus-within glow already handles the focus affordance — kill the
+ * plugin's ring here so it doesn't double up. */
+.composer__ta:focus {
+  outline: none;
+  box-shadow: none;
 }
 .composer__ta::placeholder { color: var(--c-faint); }
 .composer__send {

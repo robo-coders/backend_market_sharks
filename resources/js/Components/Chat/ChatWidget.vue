@@ -116,6 +116,7 @@ async function openDrawer() {
   room.markFirstUnread()
   await nextTick()
   panel.value?.scrollToBottom()
+  panel.value?.focus()
   unread.value = 0
   room.markRead()
 }
