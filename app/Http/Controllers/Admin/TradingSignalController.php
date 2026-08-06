@@ -36,7 +36,6 @@ class TradingSignalController extends Controller
             'opened_at' => ['nullable', 'date'],
         ]);
 
-        // Only one live signal at a time — pending OR open both count.
         if (TradingSignal::whereIn('status', ['pending', 'open'])->exists()) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -51,17 +50,12 @@ class TradingSignalController extends Controller
             ]);
         }
 
-        // Decide the initial state from the live price using standard
-        // limit-order semantics:
-        //   BUY  is live immediately if price is already AT or BELOW entry.
-        //   SELL is live immediately if price is already AT or ABOVE entry.
-        // Otherwise it waits as pending until the monitor sees entry hit.
         $priceData = $goldPriceService->getPrice();
         $livePrice = (float) ($priceData['price'] ?? 0);
         $entry = (float) $validated['entry_price'];
 
         $isLiveNow = $livePrice > 0 && (
-            $validated['signal_type'] === 'buy'
+            $entry <= $livePrice
                 ? $livePrice <= $entry
                 : $livePrice >= $entry
         );
@@ -71,8 +65,6 @@ class TradingSignalController extends Controller
             'status' => $isLiveNow ? 'open' : 'pending',
             'opened_at' => $validated['opened_at'] ?? now(),
             'activated_at' => $isLiveNow ? now() : null,
-            // Context only. P/L is always measured from entry_price, never
-            // from this. Falls back to the live price at placement.
             'gold_price_at_entry' => $validated['gold_price_at_entry']
                 ?? ($livePrice > 0 ? $livePrice : null),
         ]);
@@ -81,7 +73,7 @@ class TradingSignalController extends Controller
 
         $this->createTeamNotification($freshSignal, $isLiveNow ? 'activated' : 'placed');
 
-        event(new TeamSignalUpdated($freshSignal));
+        event(new TeamSignalUpdated($freshSignal, null, $isLiveNow));
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -122,9 +114,6 @@ class TradingSignalController extends Controller
             'opened_at' => ['sometimes', 'date'],
         ]);
 
-        // Entry is locked once the trade is live (open). It's the value
-        // every P/L calc and the trade log are measured against — editing
-        // it after activation would silently rewrite trade history.
         if ($signal->status === 'open') {
             unset($validated['entry_price'], $validated['signal_type']);
         }
@@ -175,8 +164,6 @@ class TradingSignalController extends Controller
             return back()->with('error', 'Trading signal is already closed.');
         }
 
-        // Remember whether this was a pending signal BEFORE closing, so
-        // we can word the response correctly (cancel vs close).
         $wasPending = $signal->status === 'pending';
 
         try {
@@ -198,7 +185,7 @@ class TradingSignalController extends Controller
                 'message' => $successText,
                 'data' => [
                     'signal' => $signal->fresh(),
-                    'trade_log' => $tradeLog, // null for a cancel
+                    'trade_log' => $tradeLog,
                 ],
             ]);
         }
@@ -224,10 +211,7 @@ class TradingSignalController extends Controller
         $type = strtoupper($signal->signal_type);
 
         $message = match ($action) {
-            // Pending: waiting for price to reach entry. Deliberately does
-            // NOT say "opened at" — no trade exists yet.
             'placed' => "{$symbol} {$type} signal placed — waiting for entry {$signal->entry_price}.",
-            // Live from the moment of creation (price already at entry side).
             'activated' => "{$symbol} {$type} trade is now live at entry {$signal->entry_price}.",
             'updated' => "{$symbol} signal was updated. Current status: " . strtoupper($signal->status) . '.',
             'closed' => "{$symbol} signal was closed" . ($closeReason ? " ({$closeReason})" : '') . '.',
