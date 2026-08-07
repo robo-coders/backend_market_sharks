@@ -47,13 +47,18 @@ class TradingSignal extends Model
 
     public function hasReachedEntry(float $price): bool
     {
-        $entry = (float) $this->entry_price;
-        $placedPrice = (float) ($this->gold_price_at_entry ?? $entry);
+        $current = (int) round($price);
+        $entry = (int) round((float) $this->entry_price);
+        $market = (int) round((float) $this->gold_price_at_entry);
 
-        if ($entry <= $placedPrice) {
-            return $price <= $entry;
+        if ($entry < $market) {
+            return $current <= $entry;
         }
 
-        return $price >= $entry;
+        if ($entry > $market) {
+            return $current >= $entry;
+        }
+
+        return $current === $entry;
     }
 }
